@@ -78,11 +78,11 @@ codeunit 50536 "PEQI Part Mapper"
         until JobItem.Next() = 0;
 
         JsonHelper.AddText(Part, 'name', ComponentType);
-        JsonHelper.AddText(Part, 'productType', Format(PartMapping."Product Type"));
+        JsonHelper.AddText(Part, 'productType', Format(PartMapping."Product Type", 0, 9));
         JsonHelper.AddInteger(Part, 'pageCount', TotalPages);
         JsonHelper.AddDecimal(Part, 'trimWidthMm', FirstItem.Width);
         JsonHelper.AddDecimal(Part, 'trimHeightMm', FirstItem.Length);
-        JsonHelper.AddText(Part, 'grainRule', Format(PartMapping."Grain Rule"));
+        JsonHelper.AddText(Part, 'grainRule', Format(PartMapping."Grain Rule", 0, 9));
         JsonHelper.AddInteger(Part, 'frontColors', FrontColors);
         JsonHelper.AddInteger(Part, 'backColors', BackColors);
         Part.Add('catalog', BuildPartCatalog(FirstItem));

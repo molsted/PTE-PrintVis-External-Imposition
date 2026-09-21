@@ -45,6 +45,7 @@ codeunit 50610 "PEQI Builder Tests"
         Assert.AreEqual(210.0, JsonHelper.ReadDecimal(Part, 'trimWidthMm'), 'Width is the trim width');
         Assert.AreEqual(297.0, JsonHelper.ReadDecimal(Part, 'trimHeightMm'), 'Length is the trim height');
         Assert.AreEqual('Body', JsonHelper.ReadText(Part, 'productType'), 'Product type comes from the part mapping');
+        Assert.AreEqual('ParallelToSpine', JsonHelper.ReadText(Part, 'grainRule'), 'Grain rule is the engine spelling, not the caption');
     end;
 
     [Test]
