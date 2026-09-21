@@ -43,6 +43,11 @@ Referred to below as **the extracted PrintVis source**.
 - **File layout:** `src/<Area>/<Name>.<ObjectType>.al`.
 - **`Press Id` (GUID) and `Substrate Id` (integer) are assigned once and never regenerated.** The `solutionId` from `/calculate` is a hash that includes them; regenerating either makes every quoted solution stale at `/jdf`.
 - **The API key is never a table field.** It lives in `IsolatedStorage` at `DataScope::Company`, write-only from the setup page.
+- **Every enum serialised into an engine request uses `Format(x, 0, 9)`.** Plain
+  `Format()` returns the localizable caption, not the value name — `SaddleStitch`
+  would go on the wire as `"Saddle stitch"` and `V14` as `"JDF 1.4"`. Format 9 is
+  the language-invariant XML representation. This compiles either way, so only
+  reading catches it.
 - **`impositionRules` is never sent** (spec §6.5). The resulting `IMPOSITION_RULES_NOT_APPLIED` diagnostic is stored, not suppressed.
 - **`catalog` filter fields are never sent** alongside `sheets[]`/`presses[]` — a stated half replaces its catalogue and the engine refuses the matching filters (spec §6.3).
 - **No write to any PrintVis table** except `PVS Job Sheet Imposition` under the guard in Task 17.
@@ -2156,11 +2161,11 @@ codeunit 50536 "PEQI Part Mapper"
         until JobItem.Next() = 0;
 
         JsonHelper.AddText(Part, 'name', ComponentType);
-        JsonHelper.AddText(Part, 'productType', Format(PartMapping."Product Type"));
+        JsonHelper.AddText(Part, 'productType', Format(PartMapping."Product Type", 0, 9));
         JsonHelper.AddInteger(Part, 'pageCount', TotalPages);
         JsonHelper.AddDecimal(Part, 'trimWidthMm', FirstItem.Width);
         JsonHelper.AddDecimal(Part, 'trimHeightMm', FirstItem.Length);
-        JsonHelper.AddText(Part, 'grainRule', Format(PartMapping."Grain Rule"));
+        JsonHelper.AddText(Part, 'grainRule', Format(PartMapping."Grain Rule", 0, 9));
         JsonHelper.AddInteger(Part, 'frontColors', FrontColors);
         JsonHelper.AddInteger(Part, 'backColors', BackColors);
         Part.Add('catalog', BuildPartCatalog(FirstItem));
@@ -2183,7 +2188,15 @@ codeunit 50536 "PEQI Part Mapper"
 }
 ```
 
-`Format(PartMapping."Product Type")` emits the enum's AL value name, which Task 2 deliberately spelled the way the engine does — `Body`, `Cover`, `ParallelToSpine`. Do not rename an enum value without checking the engine's vocabulary.
+**Every enum that reaches the JSON is formatted `Format(x, 0, 9)`, and the third
+argument is load-bearing.** Plain `Format()` on an enum returns its *caption*,
+which is localizable: `PEQI Grain Rule::ParallelToSpine` would go on the wire as
+`"Parallel to spine"`, and `PEQI Binding Type::SaddleStitch` as `"Saddle stitch"`.
+Format 9 is AL's language-invariant XML representation and yields the value name,
+which Task 2 deliberately spelled the way the engine does. The mistake compiles
+and produces a request the engine rejects or misreads, so it will not be caught
+by the build. Do not drop the `, 0, 9`, and do not rename an enum value without
+checking the engine's vocabulary.
 
 - [ ] **Step 5: Compile**
 
@@ -2349,7 +2362,7 @@ codeunit 50537 "PEQI Catalog Mapper"
 
                 Grain := PaperSetup.EffectiveGrain();
                 if Grain <> Grain::" " then
-                    JsonHelper.AddText(Sheet, 'grain', Format(Grain));
+                    JsonHelper.AddText(Sheet, 'grain', Format(Grain, 0, 9));
 
                 JsonHelper.AddDecimalIfSet(Sheet, 'grammageGsm', Grammage(PaperSetup, Item, Setup));
                 JsonHelper.AddDecimalIfSet(Sheet, 'caliperMicrons', Caliper(PaperSetup, Item, Setup));
@@ -2406,7 +2419,7 @@ codeunit 50537 "PEQI Catalog Mapper"
 
             JsonHelper.AddText(Press, 'id', GuidText(PressSetup."Press Id"));
             JsonHelper.AddText(Press, 'name', PressName(PressSetup, Config));
-            JsonHelper.AddText(Press, 'type', Format(PressType(PressSetup, Config)));
+            JsonHelper.AddText(Press, 'type', Format(PressType(PressSetup, Config), 0, 9));
 
             JsonHelper.AddDecimal(Press, 'maxSheetWidthMm', Config."Max Printing Format Width");
             JsonHelper.AddDecimal(Press, 'maxSheetHeightMm', Config."Max Printing Format Length");
@@ -2420,10 +2433,10 @@ codeunit 50537 "PEQI Catalog Mapper"
 
             JsonHelper.AddDecimalIfSet(Press, 'gripperMarginMm', Config."Gripper Edge");
             if PressSetup."Gripper Edge Side" <> PressSetup."Gripper Edge Side"::" " then
-                JsonHelper.AddText(Press, 'gripperEdge', Format(PressSetup."Gripper Edge Side"));
+                JsonHelper.AddText(Press, 'gripperEdge', Format(PressSetup."Gripper Edge Side", 0, 9));
             JsonHelper.AddDecimalIfSet(Press, 'sideLayMarginMm', Config.Pull);
             if PressSetup."Side Lay Edge" <> PressSetup."Side Lay Edge"::" " then
-                JsonHelper.AddText(Press, 'sideLayEdge', Format(PressSetup."Side Lay Edge"));
+                JsonHelper.AddText(Press, 'sideLayEdge', Format(PressSetup."Side Lay Edge", 0, 9));
 
             // Both image-area bounds are needed for either to apply.
             if (PressSetup."Max Image Area Width (mm)" <> 0) and (PressSetup."Max Image Area Height (mm)" <> 0) then begin
@@ -2666,10 +2679,10 @@ codeunit 50535 "PEQI Request Builder"
         Setup := Setup.GetSetup();
 
         RequestObject.Add('parts', PartMapper.BuildParts(CaseId, JobNo, VersionNo));
-        JsonHelper.AddText(RequestObject, 'binding', Format(BindingMapping.Binding));
-        JsonHelper.AddText(RequestObject, 'bindingSide', Format(BindingSide(CaseId, JobNo, VersionNo, BindingMapping)));
+        JsonHelper.AddText(RequestObject, 'binding', Format(BindingMapping.Binding, 0, 9));
+        JsonHelper.AddText(RequestObject, 'bindingSide', Format(BindingSide(CaseId, JobNo, VersionNo, BindingMapping), 0, 9));
         JsonHelper.AddIntegerIfSet(RequestObject, 'amount', PVSJob.Quantity);
-        JsonHelper.AddText(RequestObject, 'grainPolicy', Format(Setup."Grain Policy"));
+        JsonHelper.AddText(RequestObject, 'grainPolicy', Format(Setup."Grain Policy", 0, 9));
         JsonHelper.AddInteger(RequestObject, 'maxSolutions', Setup."Max Solutions");
 
         // The self-contained set. Stating a half replaces its catalogue, so the
@@ -4783,8 +4796,8 @@ codeunit 50543 "PEQI Commit Manager"
 
         JsonHelper.AddText(RequestObject, 'jobId', JobId(ImpositionJob, Setup));
         JsonHelper.AddText(RequestObject, 'solutionId', ImpositionJob."Solution Id");
-        JsonHelper.AddText(RequestObject, 'version', Format(Setup."Jdf Version"));
-        JsonHelper.AddText(RequestObject, 'flavour', Format(Setup."Jdf Flavour"));
+        JsonHelper.AddText(RequestObject, 'version', Format(Setup."Jdf Version", 0, 9));
+        JsonHelper.AddText(RequestObject, 'flavour', Format(Setup."Jdf Flavour", 0, 9));
         RequestObject.WriteTo(RequestText);
 
         Client.SetTransport(TransportType);
