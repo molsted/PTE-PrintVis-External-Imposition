@@ -3,17 +3,37 @@
   "name": "PTE PrintVis External Imposition",
   "publisher": "Printers Equity",
   "version": "1.0.0.0",
-  "brief": "",
-  "description": "",
+  "brief": "Solves job imposition with the external Impositioning engine and writes the JDF.",
+  "description": "Builds a self-contained imposition request from a PrintVis job and its components, hosts the Impositioning editor in Business Central so a planner can choose a layout, and writes the CIP4 JDF ticket for the chosen solution. Paper and presses are sent inline from PrintVis's own masters, so nothing has to be registered with the engine. Nothing is written back to the PrintVis calculation.",
   "privacyStatement": "",
   "EULA": "",
   "help": "",
   "url": "",
   "logo": "",
-  "dependencies": [],
+  "dependencies": [
+    {
+      "id": "5452f323-059e-499a-9753-5d2c07eef904",
+      "name": "PrintVis",
+      "publisher": "PrintVis A/S",
+      "version": "28.0.0.0"
+    },
+    {
+      "id": "a1775e0b-ae52-43ed-9eb9-8e23a6214831",
+      "name": "PrintVis System Library",
+      "publisher": "PrintVis A/S",
+      "version": "28.0.0.0"
+    },
+    {
+      "id": "63bb5701-ecc7-4a35-b851-0593b74d74e2",
+      "name": "Printer's Equity Library",
+      "publisher": "Printer's Equity",
+      "version": "25.0.0.0"
+    }
+  ],
   "screenshots": [],
-  "platform": "1.0.0.0",
-  "application": "22.0.0.0",
+  "platform": "28.0.0.0",
+  "application": "28.0.0.0",
+  "runtime": "17.0",
   "idRanges": [
     {
       "from": 50500,

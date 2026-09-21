@@ -1,0 +1,38 @@
+{
+  "id": "c2594d43-7f3a-4f26-858d-4a52a475b14f",
+  "name": "PTE PrintVis External Imposition Test",
+  "publisher": "Printers Equity",
+  "version": "1.0.0.0",
+  "brief": "Tests for PTE PrintVis External Imposition.",
+  "description": "Test app. Not shipped to production.",
+  "dependencies": [
+    {
+      "id": "57ee841a-7966-41d2-8abe-957f55eb05dc",
+      "name": "PTE PrintVis External Imposition",
+      "publisher": "Printers Equity",
+      "version": "1.0.0.0"
+    },
+    {
+      "id": "dd0be2ea-f733-4d65-bb34-a28f4624fb14",
+      "name": "Library Assert",
+      "publisher": "Microsoft",
+      "version": "28.0.0.0"
+    },
+    {
+      "id": "e7320ebb-08b3-4406-b1ec-b4927d3e280b",
+      "name": "Any",
+      "publisher": "Microsoft",
+      "version": "28.0.0.0"
+    }
+  ],
+  "platform": "28.0.0.0",
+  "application": "28.0.0.0",
+  "runtime": "17.0",
+  "idRanges": [ { "from": 50601, "to": 50650 } ],
+  "features": [ "NoImplicitWith" ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  }
+}
