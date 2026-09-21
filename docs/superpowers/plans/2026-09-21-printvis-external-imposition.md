@@ -588,11 +588,12 @@ table 50500 "PEQI Imposition Setup"
 
     procedure GetApiKey(): Text
     var
-        Key: Text;
+        ValueTxt: Text;
     begin
-        if not IsolatedStorage.Get(ApiKeyTok, DataScope::Company, Key) then
+        // Not named Key: that is a reserved word in AL and the compiler rejects it.
+        if not IsolatedStorage.Get(ApiKeyTok, DataScope::Company, ValueTxt) then
             exit('');
-        exit(Key);
+        exit(ValueTxt);
     end;
 
     procedure HasApiKey(): Boolean
