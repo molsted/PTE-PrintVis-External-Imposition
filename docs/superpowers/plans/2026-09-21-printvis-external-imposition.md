@@ -47,6 +47,15 @@ Referred to below as **the extracted PrintVis source**.
 - **`catalog` filter fields are never sent** alongside `sheets[]`/`presses[]` — a stated half replaces its catalogue and the engine refuses the matching filters (spec §6.3).
 - **No write to any PrintVis table** except `PVS Job Sheet Imposition` under the guard in Task 17.
 
+## Execution Order
+
+> **Controller ruling (pre-flight):** Task 15 builds the control add-in, whose
+> `SolutionChosen` and `PreviewReady` triggers call `PEQI Commit Manager` (Task 16)
+> and `PEQI Preview Writer` (Task 17). Written in plan order it would not compile.
+> **Dispatch order is 1–14, then 16, 17, 15, 18.** Task numbering is unchanged, so
+> every task brief still resolves by its own number. Cost if wrong: Task 15's
+> commit lands after two it does not depend on.
+
 ## Verification Model — read this before Task 1
 
 This repo can be compiled on this machine but **AL test codeunits cannot be executed here.** They need a Business Central server; Docker is not running and there is no container. So the red/green cycle is split, and each task says which gate applies:
@@ -83,7 +92,7 @@ PTE-PrintVis-External-Imposition/
 │       │   ├── PEQIImposition.PermissionSet.al      50580
 │       │   └── PEQIImpositionSetup.PermissionSet.al 50581
 │       ├── Enums/
-│       │   └── PEQIEnums.Enum.al                    50550-50562  (13 enums)
+│       │   └── PEQIEnums.Enum.al                    50550-50562  (12 enums, 50554 free)
 │       ├── Setup/
 │       │   ├── PEQIImpositionSetup.Table.al         50500
 │       │   ├── PEQIImpositionSetup.Page.al          50510
@@ -328,16 +337,22 @@ git commit -m "build: target BC 28 and PrintVis 28, add test app and local compi
 
 ### Task 2: Enums
 
+> **Controller ruling (pre-flight):** the plan originally declared a thirteenth
+> enum, `PEQI Work Style` (50554). Nothing consumes it — `PEQI Press Setup`
+> represents work styles as five booleans and `WorkStyleList()` emits the engine's
+> spellings directly. It has been removed rather than shipped as a dead object.
+> Id 50554 is left unallocated.
+
 **Files:**
 - Create: `PTE PrintVis External Imposition/src/Enums/PEQIEnums.Enum.al`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: the thirteen enums every later task refers to. Value names match the engine's JSON spellings exactly, because they are serialised straight into the request.
+- Produces: the twelve enums every later task refers to. Value names match the engine's JSON spellings exactly, because they are serialised straight into the request.
 
-- [ ] **Step 1: Write all thirteen enums in one file**
+- [ ] **Step 1: Write all twelve enums in one file**
 
-One file, because they are a single vocabulary and splitting them into thirteen files would only add noise. Captions are the engine's own words so an operator reading a diagnostic sees the same term.
+One file, because they are a single vocabulary and splitting them into twelve files would only add noise. Captions are the engine's own words so an operator reading a diagnostic sees the same term.
 
 ```al
 // <copyright header>
@@ -374,16 +389,6 @@ enum 50553 "PEQI Press Edge"
     value(2; Bottom) { Caption = 'Bottom'; }
     value(3; Left) { Caption = 'Left'; }
     value(4; Right) { Caption = 'Right'; }
-}
-
-enum 50554 "PEQI Work Style"
-{
-    Extensible = false;
-    value(0; Simplex) { Caption = 'Simplex'; }
-    value(1; WorkAndBack) { Caption = 'Work and back'; }
-    value(2; WorkAndTurn) { Caption = 'Work and turn'; }
-    value(3; WorkAndTumble) { Caption = 'Work and tumble'; }
-    value(4; Perfecting) { Caption = 'Perfecting'; }
 }
 
 enum 50555 "PEQI Binding Type"
@@ -479,6 +484,7 @@ git commit -m "feat: add imposition enums matching the engine's JSON vocabulary"
 - Produces:
   - `PEQIImpositionSetup.GetSetup(): Record "PEQI Imposition Setup"` — inserts the singleton on first call.
   - `PEQIImpositionSetup.SetApiKey(Key: Text)` and `.GetApiKey(): Text` — isolated storage, never a field.
+  - `PEQIImpositionSetup.NextSubstrateId(): Integer` — monotonic; never reuses
   - `PEQIImpositionSetup.ThicknessToMicrons(Value: Decimal): Decimal`
   - `PEQIImpositionSetup.WeightToGsm(Value: Decimal): Decimal`
 
@@ -539,6 +545,12 @@ table 50500 "PEQI Imposition Setup"
             Caption = 'Weight Is g/m2';
             InitValue = true;
         }
+        field(50; "Last Substrate Id"; Integer)
+        {
+            Caption = 'Last Substrate Id';
+            Editable = false;
+            ToolTip = 'High-water mark for substrate ids. It only ever rises, so a deleted paper''s id is never handed to a different paper.';
+        }
     }
 
     keys
@@ -586,6 +598,21 @@ table 50500 "PEQI Imposition Setup"
     procedure HasApiKey(): Boolean
     begin
         exit(IsolatedStorage.Contains(ApiKeyTok, DataScope::Company));
+    end;
+
+    /// <summary>Issues the next substrate id and records it. A high-water mark
+    /// rather than max-plus-one over the rows: deleting the highest paper must not
+    /// release its id, because a stored request or a written ticket may still name it.</summary>
+    procedure NextSubstrateId(): Integer
+    var
+        Setup: Record "PEQI Imposition Setup";
+    begin
+        Setup.LockTable();
+        Setup := Setup.GetSetup();
+        Setup.Get('');
+        Setup."Last Substrate Id" += 1;
+        Setup.Modify(true);
+        exit(Setup."Last Substrate Id");
     end;
 
     /// <summary>PVS Thickness to the engine's caliperMicrons.</summary>
@@ -730,6 +757,12 @@ git commit -m "feat: add imposition setup singleton with isolated-storage API ke
 ---
 
 ### Task 4: Press Setup and Paper Setup
+
+> **Controller ruling (pre-flight):** the substrate allocator originally read
+> `FindLast` over the table, which hands a deleted paper's id straight to the next
+> insert — the third test below asserts against exactly that. It now draws from a
+> high-water mark on the setup singleton (`Last Substrate Id`, added in Task 3).
+> Cost if wrong: one integer field on a singleton nobody else reads.
 
 **Files:**
 - Create: `PTE PrintVis External Imposition/src/Setup/PEQIPressSetup.Table.al`
@@ -1000,16 +1033,14 @@ table 50502 "PEQI Paper Setup"
             "Substrate Id" := NextSubstrateId();
     end;
 
-    /// <summary>Highest issued id plus one. Deleted ids are not handed out again:
-    /// a stored request or ticket may still name the old one.</summary>
+    /// <summary>Delegates to the setup singleton's high-water mark. Max-plus-one
+    /// over the rows would release a deleted paper's id to the next one inserted,
+    /// which is exactly what this table must never do.</summary>
     local procedure NextSubstrateId(): Integer
     var
-        PaperSetup: Record "PEQI Paper Setup";
+        Setup: Record "PEQI Imposition Setup";
     begin
-        PaperSetup.SetCurrentKey("Substrate Id");
-        if PaperSetup.FindLast() then
-            exit(PaperSetup."Substrate Id" + 1);
-        exit(1);
+        exit(Setup.NextSubstrateId());
     end;
 
     /// <summary>The override if set, otherwise the item's own PVS Grain Direction.</summary>
@@ -3866,6 +3897,19 @@ page 50517 "PEQI Imposition Job Card"
         }
     }
 
+    var
+        EditorVisible: Boolean;
+        HasError: Boolean;
+        CanGenerate: Boolean;
+
+    trigger OnAfterGetRecord()
+    begin
+        // EditorVisible and CanGenerate are read by controls added in later tasks.
+        EditorVisible := Rec.Status in [Rec.Status::Draft, Rec.Status::Solved];
+        HasError := Rec."Last Error" <> '';
+        CanGenerate := Rec.Status = Rec.Status::Solved;
+    end;
+
     actions
     {
         area(Processing)
@@ -4391,21 +4435,10 @@ Add to `PEQIImpositionJobCard`'s `area(Content)`, after the `Chosen` group:
             }
 ```
 
-and to the page's `var` block and triggers:
+and to the page (the three page variables and `OnAfterGetRecord` already exist
+from Task 13 — do not declare them again):
 
 ```al
-    var
-        EditorVisible: Boolean;
-        HasError: Boolean;
-        CanGenerate: Boolean;
-
-    trigger OnAfterGetRecord()
-    begin
-        EditorVisible := Rec.Status in [Rec.Status::Draft, Rec.Status::Solved];
-        HasError := Rec."Last Error" <> '';
-        CanGenerate := Rec.Status = Rec.Status::Solved;
-    end;
-
     local procedure SeedOptions(): Text
     var
         Options: JsonObject;
