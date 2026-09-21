@@ -19,3 +19,7 @@ rad.json
 .snapshots/
 cache_*
 ~$*
+
+# Claude Code worktrees and scratch
+.claude/worktrees/
+.superpowers/
