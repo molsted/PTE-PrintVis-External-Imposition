@@ -17,6 +17,7 @@ codeunit 50610 "PEQI Builder Tests"
         Assert: Codeunit "Library Assert";
         TestData: Codeunit "PEQI Test Data";
         PartMapper: Codeunit "PEQI Part Mapper";
+        CatalogMapper: Codeunit "PEQI Catalog Mapper";
 
     [Test]
     procedure JobItemsOfOneComponentBecomeOnePartWithSummedPages()
@@ -95,5 +96,83 @@ codeunit 50610 "PEQI Builder Tests"
 
         // [THEN] it names the paper by its integer surrogate, not its item number
         Assert.AreEqual(SubstrateId, IdToken.AsValue().AsInteger(), 'A part selects on the substrate surrogate id');
+    end;
+
+    [Test]
+    procedure OnlyPaperMarkedForImpositionIsSent()
+    var
+        Sheets: JsonArray;
+        PaperSetup: Record "PEQI Paper Setup";
+    begin
+        // [GIVEN] one paper marked for imposition and one not
+        TestData.AddPaper('PAPER-USED');
+        PaperSetup.Init();
+        PaperSetup."Item No." := 'PAPER-UNUSED';
+        PaperSetup."Use for Imposition" := false;
+        PaperSetup.Insert(true);
+
+        // [WHEN] the sheets half is built
+        Sheets := CatalogMapper.BuildSheets();
+
+        // [THEN] only the marked one is present
+        Assert.AreEqual(1, Sheets.Count(), 'Unmarked paper is not sent');
+    end;
+
+    [Test]
+    procedure APressCarriesItsWorkStylesExplicitly()
+    var
+        Presses: JsonArray;
+        PressToken: JsonToken;
+        Press: JsonObject;
+        StylesToken: JsonToken;
+        Styles: JsonArray;
+        PressSetup: Record "PEQI Press Setup";
+    begin
+        // [GIVEN] a press that can work-and-turn
+        PressSetup.Init();
+        PressSetup."Cost Center Code" := 'PRESS-WT';
+        PressSetup.Configuration := 'STD';
+        PressSetup."Use for Imposition" := true;
+        PressSetup.Simplex := true;
+        PressSetup."Work And Back" := true;
+        PressSetup."Work And Turn" := true;
+        PressSetup.Insert(true);
+
+        // [WHEN] the presses half is built
+        Presses := CatalogMapper.BuildPresses();
+        Presses.Get(0, PressToken);
+        Press := PressToken.AsObject();
+        Press.Get('workStyles', StylesToken);
+        Styles := StylesToken.AsArray();
+
+        // [THEN] WorkAndTurn is stated, because the engine never derives it
+        Assert.AreEqual(3, Styles.Count(), 'All three declared work styles are sent');
+    end;
+
+    [Test]
+    procedure APressCarriesItsStoredIdNotAFreshOne()
+    var
+        Presses: JsonArray;
+        PressToken: JsonToken;
+        PressSetup: Record "PEQI Press Setup";
+        JsonHelper: Codeunit "PEQI Json Helper";
+    begin
+        // [GIVEN] a press with an assigned id
+        PressSetup.Init();
+        PressSetup."Cost Center Code" := 'PRESS-ID';
+        PressSetup.Configuration := 'STD';
+        PressSetup."Use for Imposition" := true;
+        PressSetup.Insert(true);
+
+        // [WHEN] the presses half is built twice
+        Presses := CatalogMapper.BuildPresses();
+        Presses.Get(0, PressToken);
+
+        // [THEN] the id is the stored one
+        // A fresh GUID per call makes every quoted solutionId stale at /jdf.
+        Assert.AreEqual(
+            LowerCase(DelChr(Format(PressSetup."Press Id"), '=', '{}')),
+            LowerCase(JsonHelper.ReadText(PressToken.AsObject(), 'id')),
+            'The press carries its stored id');
     end;
 }
