@@ -1253,6 +1253,14 @@ These three tests have compiled but not executed. Note in the PR description tha
 
 ### Task 5: Binding and Part mapping
 
+> **Controller ruling (pre-flight):** the plan first wrote these relations as
+> `"PVS Finishing"` and `"PVS Component Type"`. Neither object exists. Read from
+> the PrintVis symbols, the real tables are `"PVS Finishing Types"` (6010396,
+> filtered on `Process Type = Finishing`, matching PrintVis's own relation on
+> `PVS Job`.`Finishing`) and `"PVS Component Types"` (6010401). Corrected above.
+> Cost if wrong: the task fails to compile and the implementer re-reads the
+> symbols, which is where the corrected names came from.
+
 **Files:**
 - Create: `PTE PrintVis External Imposition/src/Setup/PEQIBindingMapping.Table.al`
 - Create: `PTE PrintVis External Imposition/src/Setup/PEQIBindingMappings.Page.al`
@@ -1280,7 +1288,7 @@ table 50503 "PEQI Binding Mapping"
         field(1; "Finishing Code"; Code[20])
         {
             Caption = 'Finishing Code';
-            TableRelation = "PVS Finishing";
+            TableRelation = "PVS Finishing Types" where("Process Type" = const(Finishing));
             NotBlank = true;
         }
         field(10; Binding; Enum "PEQI Binding Type") { Caption = 'Binding'; }
@@ -1313,12 +1321,11 @@ table 50503 "PEQI Binding Mapping"
 }
 ```
 
-If `PVS Finishing` is not the table name the `Finishing` field relates to, read the relation out of the symbols before changing it:
-
-```bash
-SYM=<extracted PrintVis src>/PVSJob.Table.al
-sed -n '/field(54; Finishing/,/}/p' "$SYM" | head -20
-```
+Both relations were read out of the symbols before this plan was written, so use
+them as they stand: `PVS Job`.`Finishing` relates to **`"PVS Finishing Types"`**
+(table 6010396) filtered `where("Process Type" = const(Finishing))`, and
+`PVS Job Item`.`Component Type` relates to **`"PVS Component Types"`**
+(table 6010401). Both names are plural. Do not singularise them.
 
 - [ ] **Step 2: Write the part mapping table**
 
@@ -1337,7 +1344,7 @@ table 50504 "PEQI Part Mapping"
         field(1; "Component Type"; Code[20])
         {
             Caption = 'Component Type';
-            TableRelation = "PVS Component Type";
+            TableRelation = "PVS Component Types";
             NotBlank = true;
         }
         field(10; "Product Type"; Enum "PEQI Part Product Type") { Caption = 'Product Type'; }
@@ -2490,6 +2497,12 @@ git commit -m "feat: emit inline sheets, presses and fold patterns from PrintVis
 
 ### Task 9: Request builder — assembling the document
 
+> **Controller ruling (pre-flight):** the plan's `BindingSide` originally had four
+> `case` arms. `PVS Imposition Code`.`Spine Side` has only `Left,Right`, so the Top
+> and Bottom arms would not compile. They are removed; Top and Bottom binding come
+> from `PEQI Binding Mapping`.`Default Binding Side` instead. Cost if wrong: a shop
+> binding on the head must set that default rather than have it inferred.
+
 **Files:**
 - Create: `PTE PrintVis External Imposition/src/Mapping/PEQIRequestBuilder.Codeunit.al`
 - Modify: `PTE PrintVis External Imposition.Test/src/PEQIBuilderTests.Codeunit.al`
@@ -2647,26 +2660,24 @@ codeunit 50535 "PEQI Request Builder"
         JobItem.SetFilter("Imposition Type", '<>%1', '');
         if JobItem.FindFirst() then
             if ImpositionCode.Get(JobItem."Imposition Type") then
+                // PVS Imposition Code."Spine Side" is Left,Right only. Top and
+                // Bottom binding remain reachable through the binding mapping's
+                // default, which is the only place they can come from.
                 case ImpositionCode."Spine Side" of
                     ImpositionCode."Spine Side"::Left:
                         exit("PEQI Binding Side"::Left);
                     ImpositionCode."Spine Side"::Right:
                         exit("PEQI Binding Side"::Right);
-                    ImpositionCode."Spine Side"::Top:
-                        exit("PEQI Binding Side"::Top);
-                    ImpositionCode."Spine Side"::Bottom:
-                        exit("PEQI Binding Side"::Bottom);
                 end;
         exit(BindingMapping."Default Binding Side");
     end;
 }
 ```
 
-`PVS Imposition Code`.`Spine Side` is an `Option`; read its `OptionMembers` out of the symbols and match the `case` arms to the real member names before compiling:
-
-```bash
-sed -n '/field(71; "Spine Side"/,/}/p' <extracted PrintVis src>/PVSImpositionCode.Table.al
-```
+`PVS Imposition Code`.`Spine Side` was read out of the symbols: it is an `Option`
+with `OptionMembers = Left,Right` — **there is no Top or Bottom member.** The two
+`case` arms above are therefore exhaustive. Do not add arms for Top or Bottom;
+they will not compile.
 
 - [ ] **Step 4: Compile**
 
