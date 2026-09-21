@@ -61,6 +61,9 @@ table 50505 "PEQI Imposition Job"
         Existing.SetRange("Case ID", CaseId);
         Existing.SetRange(Job, JobNo);
         Existing.SetRange(Version, VersionNo);
+        // Lock before reading so the read-modify-write is serialised; without it,
+        // concurrent re-solves can both read the same last entry and compute the same NextEntry.
+        Existing.LockTable();
         if Existing.FindLast() then
             NextEntry := Existing."Entry No." + 1;
 
