@@ -2188,6 +2188,14 @@ git commit -m "feat: map PrintVis job items to engine parts, one per component t
 
 ### Task 8: Catalogue mapper — the two inline halves
 
+> **Controller ruling (pre-flight):** `PressType` originally branched on
+> `Config.Imaging`. Read from the symbols, `Imaging` enumerates proofers and
+> platesetters — an offset press driven by a platesetter reads as Digital under
+> that test, and a digital press with `Imaging` blank reads as Offset. Both
+> backwards. `Printing Machine` carries an explicit `Digital` member and is the
+> field that actually names the technology. Corrected above. Cost if wrong: a shop
+> classifying presses some third way sets `Use Press Type Override` per press.
+
 **Files:**
 - Create: `PTE PrintVis External Imposition/src/Mapping/PEQICatalogMapper.Codeunit.al`
 - Modify: `PTE PrintVis External Imposition.Test/src/PEQIBuilderTests.Codeunit.al`
@@ -2442,9 +2450,12 @@ codeunit 50537 "PEQI Catalog Mapper"
     begin
         if PressSetup."Use Press Type Override" then
             exit(PressSetup."Press Type Override");
-        if Config.Imaging = Config.Imaging::" " then
-            exit("PEQI Press Type"::Offset);
-        exit("PEQI Press Type"::Digital);
+        // Printing Machine is the field that names the press technology and has
+        // an explicit Digital member. Imaging describes proofing and platesetting,
+        // so a platesetter-driven offset press reads as Digital there.
+        if Config."Printing Machine" = Config."Printing Machine"::Digital then
+            exit("PEQI Press Type"::Digital);
+        exit("PEQI Press Type"::Offset);
     end;
 
     local procedure GuidText(Value: Guid): Text
@@ -2478,7 +2489,16 @@ codeunit 50537 "PEQI Catalog Mapper"
 }
 ```
 
-The `Imaging` option is used to tell offset from digital because it is the field PrintVis sets for platesetter-driven work. If your shops use `Machine Type` or `Printing Machine` for that distinction instead, change `PressType` and say so in the commit — it is one function, deliberately.
+`PressType` reads `Printing Machine`, whose members are
+`Miscellaneous, "Sheet Fed", "Web Fed", Flexo, Digital, , , "Continuous Fed"` —
+`Digital` is explicit, so the test is exact. Calling a digital press offset
+silently removes every portrait sheet from the solve, which is why this is worth
+getting from the right field.
+
+Note for later: a `Web Fed` or `Continuous Fed` press is refused by the engine
+with `PRESS_IS_WEB_FED`, because this module works from a chosen sheet size and a
+gripper margin and a web has neither. Sending one costs a stored diagnostic, not
+a wrong answer, so v1 sends it and lets the engine say so.
 
 - [ ] **Step 4: Compile**
 
