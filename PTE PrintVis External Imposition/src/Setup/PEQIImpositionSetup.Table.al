@@ -84,7 +84,8 @@ table 50500 "PEQI Imposition Setup"
         if not Setup.Get('') then begin
             Setup.Init();
             Setup."Primary Key" := '';
-            Setup.Insert(true);
+            if not Setup.Insert(true) then
+                Setup.Get('');
         end;
         exit(Setup);
     end;
@@ -117,14 +118,18 @@ table 50500 "PEQI Imposition Setup"
 
     /// <summary>Issues the next substrate id and records it. A high-water mark
     /// rather than max-plus-one over the rows: deleting the highest paper must not
-    /// release its id, because a stored request or a written ticket may still name it.</summary>
+    /// release its id, because a stored request or a written ticket may still name it.
+    /// Lock is taken before the read to prevent concurrent id allocation.</summary>
     procedure NextSubstrateId(): Integer
     var
         Setup: Record "PEQI Imposition Setup";
     begin
         Setup.LockTable();
-        Setup := Setup.GetSetup();
-        Setup.Get('');
+        if not Setup.Get('') then begin
+            Setup.Init();
+            Setup."Primary Key" := '';
+            Setup.Insert(true);
+        end;
         Setup."Last Substrate Id" += 1;
         Setup.Modify(true);
         exit(Setup."Last Substrate Id");
