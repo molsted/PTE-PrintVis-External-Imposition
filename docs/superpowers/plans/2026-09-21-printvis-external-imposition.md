@@ -561,7 +561,11 @@ table 50500 "PEQI Imposition Setup"
     var
         ApiKeyTok: Label 'PEQI_ENGINE_API_KEY', Locked = true;
 
-    /// <summary>Reads the singleton, inserting it with its InitValues on first call.</summary>
+    /// <summary>Reads the singleton, inserting it with its InitValues on first call.
+    /// The insert's result is tested rather than assumed: two concurrent first-ever
+    /// callers would both see "not found", and the loser re-reads what the winner
+    /// wrote instead of erroring on a duplicate key. Locking here instead would
+    /// lock the singleton on every ordinary read, which is the wrong trade.</summary>
     procedure GetSetup(): Record "PEQI Imposition Setup"
     var
         Setup: Record "PEQI Imposition Setup";
@@ -569,7 +573,8 @@ table 50500 "PEQI Imposition Setup"
         if not Setup.Get('') then begin
             Setup.Init();
             Setup."Primary Key" := '';
-            Setup.Insert(true);
+            if not Setup.Insert(true) then
+                Setup.Get('');
         end;
         exit(Setup);
     end;
@@ -603,14 +608,21 @@ table 50500 "PEQI Imposition Setup"
 
     /// <summary>Issues the next substrate id and records it. A high-water mark
     /// rather than max-plus-one over the rows: deleting the highest paper must not
-    /// release its id, because a stored request or a written ticket may still name it.</summary>
+    /// release its id, because a stored request or a written ticket may still name it.
+    /// The lock is taken before the read, on the same record variable, so the
+    /// read-modify-write is serialised in a way a reader can verify. Do not route
+    /// this through GetSetup(): assigning a whole record over a locked variable
+    /// makes it unclear whether the lock still applies.</summary>
     procedure NextSubstrateId(): Integer
     var
         Setup: Record "PEQI Imposition Setup";
     begin
         Setup.LockTable();
-        Setup := Setup.GetSetup();
-        Setup.Get('');
+        if not Setup.Get('') then begin
+            Setup.Init();
+            Setup."Primary Key" := '';
+            Setup.Insert(true);
+        end;
         Setup."Last Substrate Id" += 1;
         Setup.Modify(true);
         exit(Setup."Last Substrate Id");
