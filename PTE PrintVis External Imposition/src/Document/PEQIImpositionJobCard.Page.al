@@ -101,6 +101,36 @@ page 50517 "PEQI Imposition Job Card"
                             PaperSetup.Count(), PressSetup.Count());
                 end;
             }
+
+            action(GenerateJdf)
+            {
+                ApplicationArea = All;
+                Caption = 'Generate JDF';
+                Image = CreateDocument;
+                Enabled = CanGenerate;
+                ToolTip = 'Writes the JDF ticket for the chosen solution and stores it on this job.';
+
+                trigger OnAction()
+                var
+                    CommitManager: Codeunit "PEQI Commit Manager";
+                    DoneMsg: Label 'JDF ticket %1 written.', Comment = '%1 ticket id';
+                    TicketId: Guid;
+                begin
+                    TicketId := CommitManager.GenerateJdf(Rec);
+                    CurrPage.Update(false);
+                    Message(DoneMsg, TicketId);
+                end;
+            }
+            action(ShowTickets)
+            {
+                ApplicationArea = All;
+                Caption = 'Tickets';
+                Image = Documents;
+                RunObject = page "PEQI Jdf Tickets";
+                RunPageLink = "Case ID" = field("Case ID"), Job = field(Job),
+                              Version = field(Version), "Entry No." = field("Entry No.");
+                ToolTip = 'Shows the JDF tickets written from this imposition.';
+            }
         }
     }
 
