@@ -3,5 +3,9 @@
   "country": "dk",
   "appFolders": [ "PTE PrintVis External Imposition" ],
   "testFolders": [ "PTE PrintVis External Imposition.Test" ],
-  "bcptTestFolders": []
+  "bcptTestFolders": [],
+
+  "useCompilerFolder": true,
+  "doNotPublishApps": true,
+  "doNotRunTests": true
 }

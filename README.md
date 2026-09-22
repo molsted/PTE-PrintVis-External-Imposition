@@ -35,8 +35,22 @@ runs line up one-to-one with the job's PrintVis sheets.
 tools/build.sh        # compile both apps locally (~3s)
 ```
 
-Tests are AL test codeunits in `PTE PrintVis External Imposition.Test` and run in
-CI or a container — they cannot execute against a local compile.
+Tests are AL test codeunits in `PTE PrintVis External Imposition.Test`. They
+cannot execute against a local compile, and they do not run in CI either.
+
+**CI is a compile gate only.** AL-Go builds with `useCompilerFolder`, so it
+compiles both apps against downloaded symbols and runs the analyzers, but does
+not publish into a container. Publishing would require PrintVis and PrintVis
+System Library to be installed there, and those are licensed ISV apps that
+cannot be handed to a public repository's CI.
+
+To execute the tests, use a sandbox where PrintVis is already installed:
+
+```powershell
+.AL-Go/cloudDevEnv.ps1     # create or refresh the online dev environment
+```
+
+then publish both apps to it and run the test codeunits from VS Code.
 
 ## Documents
 
