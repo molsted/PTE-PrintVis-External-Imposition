@@ -8,6 +8,10 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Tests;
+
+using PrintersEquity.ExternalImposition.Integration;
+
 codeunit 50601 "PEQI Test Transport" implements "PEQI IEngine Transport"
 {
     procedure Send(Method: Text; Url: Text; ApiKey: Text; TimeoutMs: Integer; Body: Text; var StatusCode: Integer; var ResponseBody: Text): Boolean

@@ -8,6 +8,11 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Integration;
+
+using PrintersEquity.ExternalImposition.Mapping;
+using PrintersEquity.ExternalImposition.Setup;
+
 codeunit 50541 "PEQI Engine Client"
 {
     var

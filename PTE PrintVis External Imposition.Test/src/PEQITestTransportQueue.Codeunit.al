@@ -10,6 +10,8 @@
 
 /// <summary>Single-instance so a test can queue responses before the client runs
 /// and inspect the calls afterwards.</summary>
+namespace PrintersEquity.ExternalImposition.Tests;
+
 codeunit 50603 "PEQI Test Transport Queue"
 {
     SingleInstance = true;

@@ -8,6 +8,11 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Document;
+
+using PrintersEquity.ExternalImposition.Commit;
+using PrintersEquity.ExternalImposition.Setup;
+
 page 50517 "PEQI Imposition Job Card"
 {
     Caption = 'Imposition';

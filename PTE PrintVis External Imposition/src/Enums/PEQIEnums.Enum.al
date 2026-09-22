@@ -8,6 +8,8 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Enums;
+
 enum 50550 "PEQI Job Status"
 {
     Extensible = false;

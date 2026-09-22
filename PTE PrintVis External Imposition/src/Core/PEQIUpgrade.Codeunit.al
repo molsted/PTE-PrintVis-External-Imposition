@@ -8,6 +8,10 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Core;
+
+using PrintersEquity.ExternalImposition.Setup;
+
 codeunit 50549 "PEQI Upgrade"
 {
     Subtype = Upgrade;

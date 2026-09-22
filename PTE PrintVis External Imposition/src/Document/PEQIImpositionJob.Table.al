@@ -8,6 +8,11 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Document;
+
+using PrintersEquity.ExternalImposition.Enums;
+using System.Security.AccessControl;
+
 table 50505 "PEQI Imposition Job"
 {
     Caption = 'Imposition Job';

@@ -8,6 +8,10 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Extensions;
+
+using PrintersEquity.ExternalImposition.Document;
+
 pageextension 50530 "PEQI Case Card" extends "PVS Case Card"
 {
     actions

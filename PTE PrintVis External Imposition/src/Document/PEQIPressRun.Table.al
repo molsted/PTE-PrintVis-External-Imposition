@@ -8,6 +8,8 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Document;
+
 table 50506 "PEQI Press Run"
 {
     Caption = 'Imposition Press Run';

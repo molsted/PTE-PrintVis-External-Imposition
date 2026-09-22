@@ -8,6 +8,13 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Tests;
+
+using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Mapping;
+using PrintersEquity.ExternalImposition.Setup;
+using System.TestLibraries.Utilities;
+
 codeunit 50610 "PEQI Builder Tests"
 {
     Subtype = Test;

@@ -8,6 +8,10 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Document;
+
+using System.Utilities;
+
 page 50520 "PEQI Jdf Tickets"
 {
     Caption = 'Imposition JDF Tickets';

@@ -8,6 +8,10 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Setup;
+
+using PrintersEquity.ExternalImposition.Enums;
+
 table 50504 "PEQI Part Mapping"
 {
     Caption = 'Imposition Part Mapping';

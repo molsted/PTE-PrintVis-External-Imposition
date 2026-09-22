@@ -8,6 +8,10 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Setup;
+
+using PrintersEquity.ExternalImposition.Enums;
+
 page 50513 "PEQI Paper Setup List"
 {
     Caption = 'Imposition Paper Setup';

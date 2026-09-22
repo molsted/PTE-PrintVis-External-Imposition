@@ -8,6 +8,8 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Setup;
+
 page 50512 "PEQI Press Setup Card"
 {
     Caption = 'Imposition Press Setup';

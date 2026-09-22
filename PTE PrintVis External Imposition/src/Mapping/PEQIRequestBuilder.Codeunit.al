@@ -8,6 +8,11 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Mapping;
+
+using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Setup;
+
 codeunit 50535 "PEQI Request Builder"
 {
     var

@@ -8,6 +8,11 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Tests;
+
+using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Setup;
+
 codeunit 50602 "PEQI Test Data"
 {
     /// <summary>Inserts a PVS Job Item for a component. Only the fields the mapper

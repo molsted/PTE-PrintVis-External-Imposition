@@ -8,6 +8,8 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Integration;
+
 enum 50563 "PEQI Transport Type" implements "PEQI IEngine Transport"
 {
     Extensible = true;

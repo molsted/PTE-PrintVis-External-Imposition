@@ -8,6 +8,12 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Mapping;
+
+using Microsoft.Inventory.Item;
+using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Setup;
+
 codeunit 50538 "PEQI Request Validator"
 {
     var

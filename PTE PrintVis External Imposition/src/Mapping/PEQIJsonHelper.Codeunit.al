@@ -8,6 +8,8 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Mapping;
+
 codeunit 50539 "PEQI Json Helper"
 {
     /// <summary>Adds a string member, omitting it when blank. The engine treats an

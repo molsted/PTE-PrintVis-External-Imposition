@@ -8,6 +8,8 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Integration;
+
 codeunit 50540 "PEQI Http Transport" implements "PEQI IEngine Transport"
 {
     Access = Internal;

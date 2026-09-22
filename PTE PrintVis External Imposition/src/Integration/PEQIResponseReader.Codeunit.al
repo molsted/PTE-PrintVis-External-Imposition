@@ -8,6 +8,12 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Integration;
+
+using PrintersEquity.ExternalImposition.Document;
+using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Mapping;
+
 codeunit 50542 "PEQI Response Reader"
 {
     var

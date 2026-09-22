@@ -8,6 +8,10 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Tests;
+
+using PrintersEquity.ExternalImposition.Integration;
+
 enumextension 50604 "PEQI Test Transport Type" extends "PEQI Transport Type"
 {
     value(100; Test)

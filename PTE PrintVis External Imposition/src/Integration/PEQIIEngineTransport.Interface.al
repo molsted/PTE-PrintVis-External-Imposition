@@ -11,6 +11,8 @@
 /// <summary>The one seam between this extension and the network. Implemented by
 /// PEQI Http Transport in production and by a double in the test app, which is
 /// what makes every status-code path testable without a server.</summary>
+namespace PrintersEquity.ExternalImposition.Integration;
+
 interface "PEQI IEngine Transport"
 {
     /// <summary>Returns true when a response was received at all - not when the

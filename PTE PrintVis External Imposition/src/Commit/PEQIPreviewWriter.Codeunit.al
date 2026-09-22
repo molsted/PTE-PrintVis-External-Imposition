@@ -8,6 +8,13 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Commit;
+
+using PrintersEquity.ExternalImposition.Document;
+using PrintersEquity.ExternalImposition.Mapping;
+using System.Text;
+using System.Utilities;
+
 codeunit 50544 "PEQI Preview Writer"
 {
     var

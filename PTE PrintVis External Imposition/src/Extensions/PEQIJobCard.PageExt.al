@@ -8,6 +8,11 @@
 // to any third party, in whole or in part, by any means.
 // ---------------------------------------------------------------------------------------------
 
+namespace PrintersEquity.ExternalImposition.Extensions;
+
+using PrintersEquity.ExternalImposition.Document;
+using PrintersEquity.ExternalImposition.Mapping;
+
 pageextension 50531 "PEQI Job Card" extends "PVS Job Card"
 {
     actions
