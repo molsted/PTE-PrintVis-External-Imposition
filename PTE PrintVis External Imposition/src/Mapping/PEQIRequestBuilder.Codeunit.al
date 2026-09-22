@@ -14,8 +14,10 @@ codeunit 50535 "PEQI Request Builder"
         PartMapper: Codeunit "PEQI Part Mapper";
         CatalogMapper: Codeunit "PEQI Catalog Mapper";
         JsonHelper: Codeunit "PEQI Json Helper";
+        Validator: Codeunit "PEQI Request Validator";
         NoBindingErr: Label 'Finishing code %1 on job %2/%3/%4 has no imposition binding mapping. Add it on the Imposition Binding Mappings page.', Comment = '%1 finishing code, %2 case, %3 job, %4 version';
         NoJobErr: Label 'Job %1/%2/%3 does not exist.', Comment = '%1 case, %2 job, %3 version';
+        ValidationErr: Label 'This job cannot be sent for imposition yet:\%1', Comment = '%1 newline-separated list of problems';
 
     procedure Build(CaseId: Integer; JobNo: Integer; VersionNo: Integer): Text
     var
@@ -38,6 +40,7 @@ codeunit 50535 "PEQI Request Builder"
         if not BindingMapping.Get(PVSJob.Finishing) then
             Error(NoBindingErr, PVSJob.Finishing, CaseId, JobNo, VersionNo);
         Setup := Setup.GetSetup();
+        ValidateOrError(CaseId, JobNo, VersionNo);
 
         RequestObject.Add('parts', PartMapper.BuildParts(CaseId, JobNo, VersionNo));
         JsonHelper.AddText(RequestObject, 'binding', Format(BindingMapping.Binding, 0, 9));
@@ -54,6 +57,20 @@ codeunit 50535 "PEQI Request Builder"
         RequestObject.Add('foldPatterns', CatalogMapper.BuildFoldPatterns());
 
         // impositionRules is deliberately absent - see the design, section 6.5.
+    end;
+
+    local procedure ValidateOrError(CaseId: Integer; JobNo: Integer; VersionNo: Integer)
+    var
+        Problems: List of [Text];
+        Problem: Text;
+        Combined: TextBuilder;
+    begin
+        if Validator.Validate(CaseId, JobNo, VersionNo, Problems) then
+            exit;
+        foreach Problem in Problems do begin
+            Combined.AppendLine('- ' + Problem);
+        end;
+        Error(ValidationErr, Combined.ToText());
     end;
 
     /// <summary>The spine side the job's own imposition code states, falling back to
