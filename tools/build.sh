@@ -30,8 +30,10 @@ if [ -d "$TEST" ]; then
     dotnet "$ALC" /project:"$TEST" /packagecachepath:"$TEST/.alpackages" \
       /out:"$OUT/test.app" || fail=1
   else
-    echo "SKIPPED - Microsoft test symbols (Library Assert, Any) are not in"
-    echo "$TEST/.alpackages. The test app is compiled by AL-Go CI instead."
+    echo "FAILED - Microsoft test symbols (Library Assert, Any) are not in"
+    echo "$TEST/.alpackages, so the test app was not compiled. Fetch them with"
+    echo "tools/fetch-test-symbols.py before relying on this gate."
+    fail=1
   fi
 fi
 
