@@ -12,8 +12,8 @@ table 50505 "PEQI Imposition Job"
 {
     Caption = 'Imposition Job';
     DataClassification = CustomerContent;
-    // LookupPageId = "PEQI Imposition Jobs";  // Restored in Task 13
-    // DrillDownPageId = "PEQI Imposition Jobs";  // Restored in Task 13
+    LookupPageId = "PEQI Imposition Jobs";
+    DrillDownPageId = "PEQI Imposition Jobs";
 
     fields
     {

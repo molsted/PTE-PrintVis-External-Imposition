@@ -12,8 +12,8 @@ table 50507 "PEQI Jdf Ticket"
 {
     Caption = 'Imposition JDF Ticket';
     DataClassification = CustomerContent;
-    // LookupPageId = "PEQI Jdf Tickets";  // Restored in Task 13
-    // DrillDownPageId = "PEQI Jdf Tickets";  // Restored in Task 13
+    LookupPageId = "PEQI Jdf Tickets";
+    DrillDownPageId = "PEQI Jdf Tickets";
 
     fields
     {
