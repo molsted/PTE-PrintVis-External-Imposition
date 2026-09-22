@@ -18,6 +18,7 @@ codeunit 50610 "PEQI Builder Tests"
         TestData: Codeunit "PEQI Test Data";
         PartMapper: Codeunit "PEQI Part Mapper";
         CatalogMapper: Codeunit "PEQI Catalog Mapper";
+        RequestBuilder: Codeunit "PEQI Request Builder";
 
     [Test]
     procedure JobItemsOfOneComponentBecomeOnePartWithSummedPages()
@@ -174,5 +175,72 @@ codeunit 50610 "PEQI Builder Tests"
             LowerCase(DelChr(Format(PressSetup."Press Id"), '=', '{}')),
             LowerCase(JsonHelper.ReadText(PressToken.AsObject(), 'id')),
             'The press carries its stored id');
+    end;
+
+    [Test]
+    procedure TheRequestStatesBothCatalogueHalvesAndNoCatalogFilter()
+    var
+        RequestObject: JsonObject;
+        Token: JsonToken;
+        BindingMapping: Record "PEQI Binding Mapping";
+        PressSetup: Record "PEQI Press Setup";
+    begin
+        // [GIVEN] a saddle-stitched job with a cover and a body, one paper, one press
+        TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
+        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddPaper('PAPER-240');
+        TestData.AddPaper('PAPER-100');
+        TestData.AddJobItem(6001, 1, 1, 1, 'COVER', 4, 148, 210, 'PAPER-240');
+        TestData.AddJobItem(6001, 1, 1, 2, 'BODY', 28, 148, 210, 'PAPER-100');
+
+        BindingMapping.Init();
+        BindingMapping."Finishing Code" := 'SADDLE';
+        BindingMapping.Binding := BindingMapping.Binding::SaddleStitch;
+        BindingMapping.Insert(true);
+        TestData.AddJob(6001, 1, 1, 'SADDLE', 5000);
+
+        PressSetup.Init();
+        PressSetup."Cost Center Code" := 'PRESS-A';
+        PressSetup.Configuration := 'STD';
+        PressSetup."Use for Imposition" := true;
+        PressSetup.Insert(true);
+
+        // [WHEN] the request is built
+        RequestObject := RequestBuilder.BuildObject(6001, 1, 1);
+
+        // [THEN] both halves are stated
+        Assert.IsTrue(RequestObject.Get('sheets', Token), 'The request states its paper');
+        Assert.IsTrue(RequestObject.Get('presses', Token), 'The request states its presses');
+        Assert.IsTrue(RequestObject.Get('foldPatterns', Token), 'The request states its fold patterns');
+
+        // [THEN] no catalog filter accompanies them - a stated half replaces its
+        // catalogue and the engine refuses the matching filters outright
+        Assert.IsFalse(RequestObject.Get('catalog', Token), 'A self-contained request sends no catalog filter');
+
+        // [THEN] no imposition rules are sent - they are measurements of another building
+        Assert.IsFalse(RequestObject.Get('impositionRules', Token), 'Imposition rules are never sent');
+    end;
+
+    [Test]
+    procedure TheRequestIsStableAcrossTwoBuilds()
+    var
+        First: Text;
+        Second: Text;
+    begin
+        // [GIVEN] a job
+        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddPaper('PAPER-90');
+        TestData.AddJobItem(6002, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-90');
+        TestData.AddJob(6002, 1, 1, 'SADDLE', 1000);
+
+        // [WHEN] the request is built twice
+        First := RequestBuilder.Build(6002, 1, 1);
+        Second := RequestBuilder.Build(6002, 1, 1);
+
+        // [THEN] the two are identical
+        // /calculate and /jdf must agree, and the engine's snapshotId hashes the
+        // rows we sent. A request that differs between builds cannot quote a
+        // solution back.
+        Assert.AreEqual(First, Second, 'The same job builds the same request');
     end;
 }
