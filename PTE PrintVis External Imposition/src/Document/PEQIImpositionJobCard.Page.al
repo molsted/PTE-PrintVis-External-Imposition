@@ -79,6 +79,28 @@ page 50517 "PEQI Imposition Job Card"
                     Message(Rec.GetRequestJson());
                 end;
             }
+
+            action(MeasureRequest)
+            {
+                ApplicationArea = All;
+                Caption = 'Measure Request Size';
+                Image = Calculate;
+                ToolTip = 'Reports the size of the request that would be sent to the editor. Used to confirm the seed fits in a control add-in argument.';
+
+                trigger OnAction()
+                var
+                    SizeMsg: Label 'Request: %1 characters (%2 KB).\Sheets: %3. Presses: %4.', Comment = '%1 chars, %2 KB, %3 sheet count, %4 press count';
+                    PaperSetup: Record "PEQI Paper Setup";
+                    PressSetup: Record "PEQI Press Setup";
+                    RequestText: Text;
+                begin
+                    RequestText := Rec.GetRequestJson();
+                    PaperSetup.SetRange("Use for Imposition", true);
+                    PressSetup.SetRange("Use for Imposition", true);
+                    Message(SizeMsg, StrLen(RequestText), Round(StrLen(RequestText) / 1024, 0.1),
+                            PaperSetup.Count(), PressSetup.Count());
+                end;
+            }
         }
     }
 
