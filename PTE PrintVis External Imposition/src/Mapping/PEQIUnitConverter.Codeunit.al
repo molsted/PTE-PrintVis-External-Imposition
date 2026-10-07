@@ -63,6 +63,38 @@ codeunit 50545 "PEQI Unit Converter"
         exit(FactorToMm);
     end;
 
+    /// <summary>One PrintVis micro-measurement -- paper thickness -- in microns.</summary>
+    /// <remarks>
+    /// <para>
+    /// PrintVis keeps thickness in a <i>micro unit</i>: a thousandth of the general unit, with
+    /// its own decimal setting ("Micro Unit Decimals"). So the stored number means mil on an
+    /// imperial installation, microns on a millimetre one and hundredths of a millimetre on a
+    /// centimetre one -- and a thousandth of the general unit, expressed in microns, is exactly
+    /// the millimetres-per-unit factor. Hence the same number serves both conversions.
+    /// </para>
+    /// <para>
+    /// Established from real data rather than assumed, because the unit is not written down
+    /// anywhere. One Dull Coated EuroArt at two weights came through as 3.80228 and 4.29184:
+    /// </para>
+    /// <code>
+    ///   reading              70 gsm      80 gsm     bulk 70   bulk 80
+    ///   as stored              3.80 um     4.29 um     0.054     0.054
+    ///   x1000 (as mm)       3802.28 um  4291.85 um    54.318    53.648
+    ///   x25.4 (as mil)        96.58 um   109.01 um     1.380     1.363
+    /// </code>
+    /// <para>
+    /// Paper bulk runs about 0.6 to 1.6 cm3/g, and two weights of one grade have to agree.
+    /// Only the third reading is a real paper, and it agrees to within one percent across both.
+    /// The other two are out by a factor of twenty-five and forty.
+    /// </para>
+    /// </remarks>
+    procedure MicroUnitToMicrons(Value: Decimal): Decimal
+    begin
+        if Value = 0 then
+            exit(0);
+        exit(Round(Value * MmPerUnit(), 0.01, '='));
+    end;
+
     /// <summary>One PrintVis length, in millimetres.</summary>
     /// <remarks>
     /// Rounded to two decimals. The engine works in millimetres and a press is set to a

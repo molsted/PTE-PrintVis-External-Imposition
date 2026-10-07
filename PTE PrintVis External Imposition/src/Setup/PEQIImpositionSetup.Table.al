@@ -11,6 +11,7 @@
 namespace PrintersEquity.ExternalImposition.Setup;
 
 using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Mapping;
 
 table 50500 "PEQI Imposition Setup"
 {
@@ -57,7 +58,9 @@ table 50500 "PEQI Imposition Setup"
         field(40; "Thickness Is Microns"; Boolean)
         {
             Caption = 'Thickness Is Microns';
-            // PVS Thickness unit is spec open item 15.1. False means millimetres.
+            // Escape hatch for data already held in microns. Normally false: PrintVis keeps
+            // thickness in a thousandth of the general unit, which "PEQI Unit Converter"
+            // converts. Was spec open item 15.1; settled against real paper, see that codeunit.
         }
         field(41; "Weight Is Gsm"; Boolean)
         {
@@ -140,11 +143,13 @@ table 50500 "PEQI Imposition Setup"
     end;
 
     /// <summary>PVS Thickness to the engine's caliperMicrons.</summary>
-    procedure ThicknessToMicrons(Value: Decimal): Decimal
+    procedure ThicknessToMicrons(Value: Decimal) Microns: Decimal
+    var
+        Units: Codeunit "PEQI Unit Converter";
     begin
         if "Thickness Is Microns" then
             exit(Value);
-        exit(Value * 1000);
+        exit(Units.MicroUnitToMicrons(Value));
     end;
 
     /// <summary>PVS Weight to the engine's grammageGsm.</summary>
