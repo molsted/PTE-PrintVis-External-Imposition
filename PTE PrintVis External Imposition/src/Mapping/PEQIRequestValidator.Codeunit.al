@@ -109,8 +109,10 @@ codeunit 50538 "PEQI Request Validator"
         JobItem: Record "PVS Job Item";
         PartMapping: Record "PEQI Part Mapping";
         PaperSetup: Record "PEQI Paper Setup";
+        PartMapper: Codeunit "PEQI Part Mapper";
         Pages: Dictionary of [Code[20], Integer];
         ComponentType: Code[20];
+        PaperItemNo: Code[20];
         Total: Integer;
     begin
         JobItem.SetRange(ID, CaseId);
@@ -132,9 +134,14 @@ codeunit 50538 "PEQI Request Validator"
                     Problems.Add(StrSubstNo(NoPartMsg, ComponentType));
             end;
 
-            if JobItem."Item No." <> '' then
-                if not PaperSetup.Get(JobItem."Item No.", '') then
-                    Problems.Add(StrSubstNo(NoPaperSetupMsg, JobItem."Item No.", ComponentType));
+            // Through the mapper, so the validator warns about exactly the paper the request
+            // will pin. It used to read "Item No.", the job item's own item, which is blank on
+            // an ordinary component -- so this check never ran and the operator learnt about an
+            // unregistered paper from a hard error mid-solve instead of from this list.
+            PaperItemNo := PartMapper.PaperItemNo(JobItem);
+            if PaperItemNo <> '' then
+                if not PaperSetup.Get(PaperItemNo, '') then
+                    Problems.Add(StrSubstNo(NoPaperSetupMsg, PaperItemNo, ComponentType));
         until JobItem.Next() = 0;
 
         foreach ComponentType in Pages.Keys() do begin

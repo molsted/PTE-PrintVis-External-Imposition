@@ -78,6 +78,72 @@ codeunit 50610 "PEQI Builder Tests"
     end;
 
     [Test]
+    procedure TwoComponentsOnTwoPapersPinTwoStocks()
+    var
+        Parts: JsonArray;
+        CoverId: Integer;
+        BodyId: Integer;
+    begin
+        // [GIVEN] a cover and a body PrintVis has put on different paper
+        TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
+        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        CoverId := TestData.AddPaper('PAPER-240');
+        BodyId := TestData.AddPaper('PAPER-100');
+        TestData.AddJobItem(5004, 1, 1, 1, 'COVER', 4, 148, 210, 'PAPER-240');
+        TestData.AddJobItem(5004, 1, 1, 2, 'BODY', 28, 148, 210, 'PAPER-100');
+
+        // [WHEN] the parts are built
+        Parts := PartMapper.BuildParts(5004, 1, 1);
+
+        // [THEN] each part is pinned to the stock its own sheet names, and neither is blank.
+        // This is the whole defect: reading the job item's FlowField gave '' for both, every
+        // part went out as catalog:{}, and the engine ran the cover on the body's paper.
+        Assert.AreEqual(CoverId, OnlySubstrateId(Parts, 'COVER'), 'The cover keeps its own stock');
+        Assert.AreEqual(BodyId, OnlySubstrateId(Parts, 'BODY'), 'The body keeps its own stock');
+    end;
+
+    [Test]
+    procedure AComponentSpanningTwoPapersIsRefused()
+    begin
+        // [GIVEN] one component whose two job items sit on different paper
+        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddPaper('PAPER-100');
+        TestData.AddPaper('PAPER-240');
+        TestData.AddJobItem(5005, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-100');
+        TestData.AddJobItem(5005, 1, 1, 2, 'BODY', 16, 210, 297, 'PAPER-240');
+
+        // [WHEN] the parts are built
+        asserterror PartMapper.BuildParts(5005, 1, 1);
+
+        // [THEN] both papers are named, because a part is imposed on one stock
+        Assert.IsTrue(StrPos(GetLastErrorText(), 'PAPER-100') > 0, 'The error names the first paper');
+        Assert.IsTrue(StrPos(GetLastErrorText(), 'PAPER-240') > 0, 'The error names the second paper');
+    end;
+
+    /// <summary>The one substrate id pinned to the named part.</summary>
+    local procedure OnlySubstrateId(Parts: JsonArray; PartName: Text): Integer
+    var
+        Part: JsonObject;
+        PartToken: JsonToken;
+        Token: JsonToken;
+        Index: Integer;
+    begin
+        for Index := 0 to Parts.Count() - 1 do begin
+            Parts.Get(Index, PartToken);
+            Part := PartToken.AsObject();
+            Part.Get('name', Token);
+            if Token.AsValue().AsText() = PartName then begin
+                Part.Get('catalog', Token);
+                if not Token.AsObject().Get('substrateIds', Token) then
+                    exit(0);
+                Token.AsArray().Get(0, Token);
+                exit(Token.AsValue().AsInteger());
+            end;
+        end;
+        exit(0);
+    end;
+
+    [Test]
     procedure APartSelectsItsOwnStockBySurrogateId()
     var
         Parts: JsonArray;

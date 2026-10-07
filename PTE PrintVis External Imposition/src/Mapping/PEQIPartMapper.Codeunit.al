@@ -70,6 +70,8 @@ codeunit 50536 "PEQI Part Mapper"
         JobItem: Record "PVS Job Item";
         PartMapping: Record "PEQI Part Mapping";
         FirstItem: Record "PVS Job Item";
+        FirstPaper: Code[20];
+        ItemPaper: Code[20];
         TotalPages: Integer;
         FrontColors: Integer;
         BackColors: Integer;
@@ -83,6 +85,7 @@ codeunit 50536 "PEQI Part Mapper"
         JobItem.SetRange("Component Type", ComponentType);
         JobItem.FindSet();
         FirstItem := JobItem;
+        FirstPaper := PaperItemNo(FirstItem);
 
         repeat
             // A component spanning two formats is an invariant violation in
@@ -94,10 +97,11 @@ codeunit 50536 "PEQI Part Mapper"
             // And one paper, for the same reason: the part is pinned to the stock its first job
             // item names, so a sibling on different stock would be imposed on paper nobody chose
             // for it.
-            if JobItem."Paper Item No." <> FirstItem."Paper Item No." then
+            ItemPaper := PaperItemNo(JobItem);
+            if ItemPaper <> FirstPaper then
                 Error(PaperClashErr, ComponentType,
-                      FirstItem."Job Item No.", FirstItem."Paper Item No.",
-                      JobItem."Job Item No.", JobItem."Paper Item No.");
+                      FirstItem."Job Item No.", FirstPaper,
+                      JobItem."Job Item No.", ItemPaper);
             TotalPages += JobItem."No. Of Pages";
             if JobItem."Colors Front" > FrontColors then
                 FrontColors := JobItem."Colors Front";
@@ -115,25 +119,50 @@ codeunit 50536 "PEQI Part Mapper"
         JsonHelper.AddText(Part, 'grainRule', EnumNames.GrainRule(PartMapping."Grain Rule"));
         JsonHelper.AddInteger(Part, 'frontColors', FrontColors);
         JsonHelper.AddInteger(Part, 'backColors', BackColors);
-        Part.Add('catalog', BuildPartCatalog(FirstItem));
+        Part.Add('catalog', BuildPartCatalog(FirstPaper, ComponentType));
+    end;
+
+    /// <summary>The paper the component runs on, read from the sheet that records it.</summary>
+    /// <remarks>
+    /// <para>
+    /// <b>"PVS Job Item"."Paper Item No." cannot be read directly.</b> It is a FlowField --
+    /// <c>lookup("PVS Job Sheet"."Paper Item No." where("Sheet ID" = field("Sheet ID")))</c> --
+    /// and a FlowField holds nothing until CalcFields runs. Read without calculating it, it
+    /// returns '' for every job item on every job, which is why pinning the part to it still
+    /// sent catalog:{} and left the engine to pick one stock for the whole product.
+    /// </para>
+    /// <para>
+    /// The sheet record is read instead of the lookup being calculated. It is where PrintVis
+    /// actually keeps the paper, "Sheet ID" is its primary key so this is a single keyed read,
+    /// and the same row carries the full sheet format, grain direction and thickness should any
+    /// of those be wanted here later.
+    /// </para>
+    /// </remarks>
+    procedure PaperItemNo(JobItem: Record "PVS Job Item"): Code[20]
+    var
+        JobSheet: Record "PVS Job Sheet";
+    begin
+        if JobItem."Sheet ID" = 0 then
+            exit('');
+        if not JobSheet.Get(JobItem."Sheet ID") then
+            exit('');
+        exit(JobSheet."Paper Item No.");
     end;
 
     /// <summary>A part still selects its own stock even when the request states its
     /// paper - parts[].catalog.substrateIds is not among the refused filters.</summary>
-    local procedure BuildPartCatalog(JobItem: Record "PVS Job Item") Catalog: JsonObject
+    local procedure BuildPartCatalog(PaperItemNumber: Code[20]; ComponentType: Code[20]) Catalog: JsonObject
     var
         PaperSetup: Record "PEQI Paper Setup";
         Ids: JsonArray;
     begin
-        // "Paper Item No.", not "Item No.". The latter is the job item's own item and is blank on
-        // an ordinary component, so this returned an empty catalog for every part and the engine
-        // was left to pick from the job-wide list. It picked one stock for the whole product --
-        // right for the text by luck, wrong for a cover PrintVis had already put on its own
-        // paper. The job says which stock each component runs on; this is where it says it.
-        if JobItem."Paper Item No." = '' then
+        // A job item with no sheet behind it names no paper, and that is not an error: the
+        // engine then chooses for that part from the job-wide list, as it did for every part
+        // before this was pinned at all.
+        if PaperItemNumber = '' then
             exit;
-        if not PaperSetup.Get(JobItem."Paper Item No.", '') then
-            Error(NoPaperErr, JobItem."Paper Item No.", JobItem."Component Type");
+        if not PaperSetup.Get(PaperItemNumber, '') then
+            Error(NoPaperErr, PaperItemNumber, ComponentType);
         Ids.Add(PaperSetup."Substrate Id");
         Catalog.Add('substrateIds', Ids);
     end;

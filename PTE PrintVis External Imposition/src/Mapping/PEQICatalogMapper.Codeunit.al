@@ -124,10 +124,17 @@ codeunit 50537 "PEQI Catalog Mapper"
         exit(Item."PVS Format 1");
     end;
 
+    /// <summary>The stock's name, which is the item's own description.</summary>
+    /// <remarks>
+    /// This used to prefer "PVS Paper Description", which never once decided anything: it is a
+    /// FlowField -- <c>lookup(Item.Description where("No." = field("PVS Paper No.")))</c> -- and
+    /// reads blank until CalcFields runs, so the branch was dead and every name came from here
+    /// anyway. Saying so plainly, because the repair that looks obvious is to add the CalcFields,
+    /// and that is not a repair: it would rename every sheet from the item PrintVis stocks to
+    /// the paper grade above it, which is the less specific of the two.
+    /// </remarks>
     local procedure ItemName(Item: Record Item): Text
     begin
-        if Item."PVS Paper Description" <> '' then
-            exit(Item."PVS Paper Description");
         exit(Item.Description);
     end;
 
