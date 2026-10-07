@@ -19,7 +19,8 @@ codeunit 50536 "PEQI Part Mapper"
         Units: Codeunit "PEQI Unit Converter";
         EnumNames: Codeunit "PEQI Enum Names";
         NoMappingErr: Label 'Component type %1 on job %2/%3/%4 has no imposition part mapping. Add it on the Imposition Part Mappings page.', Comment = '%1 component type, %2 case, %3 job, %4 version';
-        NoPaperErr: Label 'Paper item %1 on component %2 is not set up for imposition. Add it on the Imposition Paper Setup page.', Comment = '%1 item no., %2 component type';
+        NoPaperErr: Label 'Paper item %1 on component %2 is not set up for imposition. Add it on the Imposition Paper Setup page.', Comment = '%1 paper item no., %2 component type';
+        PaperClashErr: Label 'Component %1 spans two papers: job item %2 runs on %3 and job item %4 runs on %5. A part is imposed on one stock.', Comment = '%1 component, %2 %4 job item nos, %3 %5 paper item nos';
         FormatClashErr: Label 'Component %1 spans two trim formats: job item %2 is %3 x %4 and job item %5 is %6 x %7.', Comment = '%1 component, %2 %5 job item nos, %3 %4 %6 %7 dimensions';
         NoComponentsErr: Label 'Job %1/%2/%3 has no job items, so there is nothing to impose.', Comment = '%1 case, %2 job, %3 version';
 
@@ -90,6 +91,13 @@ codeunit 50536 "PEQI Part Mapper"
                 Error(FormatClashErr, ComponentType,
                       FirstItem."Job Item No.", FirstItem.Width, FirstItem.Length,
                       JobItem."Job Item No.", JobItem.Width, JobItem.Length);
+            // And one paper, for the same reason: the part is pinned to the stock its first job
+            // item names, so a sibling on different stock would be imposed on paper nobody chose
+            // for it.
+            if JobItem."Paper Item No." <> FirstItem."Paper Item No." then
+                Error(PaperClashErr, ComponentType,
+                      FirstItem."Job Item No.", FirstItem."Paper Item No.",
+                      JobItem."Job Item No.", JobItem."Paper Item No.");
             TotalPages += JobItem."No. Of Pages";
             if JobItem."Colors Front" > FrontColors then
                 FrontColors := JobItem."Colors Front";
@@ -117,10 +125,15 @@ codeunit 50536 "PEQI Part Mapper"
         PaperSetup: Record "PEQI Paper Setup";
         Ids: JsonArray;
     begin
-        if JobItem."Item No." = '' then
+        // "Paper Item No.", not "Item No.". The latter is the job item's own item and is blank on
+        // an ordinary component, so this returned an empty catalog for every part and the engine
+        // was left to pick from the job-wide list. It picked one stock for the whole product --
+        // right for the text by luck, wrong for a cover PrintVis had already put on its own
+        // paper. The job says which stock each component runs on; this is where it says it.
+        if JobItem."Paper Item No." = '' then
             exit;
-        if not PaperSetup.Get(JobItem."Item No.", '') then
-            Error(NoPaperErr, JobItem."Item No.", JobItem."Component Type");
+        if not PaperSetup.Get(JobItem."Paper Item No.", '') then
+            Error(NoPaperErr, JobItem."Paper Item No.", JobItem."Component Type");
         Ids.Add(PaperSetup."Substrate Id");
         Catalog.Add('substrateIds', Ids);
     end;
