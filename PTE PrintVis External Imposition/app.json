@@ -18,6 +18,12 @@
       "version": "28.0.0.0"
     },
     {
+      "id": "14c66b9c-4ebe-4f20-a46f-b3a31c219d2c",
+      "name": "PrintVis CIM",
+      "publisher": "PrintVis A/S",
+      "version": "28.0.0.0"
+    },
+    {
       "id": "a1775e0b-ae52-43ed-9eb9-8e23a6214831",
       "name": "PrintVis System Library",
       "publisher": "PrintVis A/S",

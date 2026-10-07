@@ -1,5 +1,25 @@
 {
     "version": "0.2.0",
     "configurations": [
+        {
+            "name": "Development",
+            "type": "al",
+            "request": "launch",
+            "environmentType": "Sandbox",
+            "environmentName": "Development",
+            "startupCompany": "CRONUS Canada, Inc.",
+            "schemaUpdateMode": "ForceSync",
+            "startupObjectId": 59001,
+            "breakOnError": true,
+            "breakOnRecordWrite": false,
+            "launchBrowser": true,
+            "enableSqlInformationDebugger": true,
+            "enableLongRunningSqlStatements": true,
+            "longRunningSqlStatementsThreshold": 500,
+            "numberOfSqlStatements": 10,
+            "tenant": "8641a717-d881-45b4-bf99-8ea4ef94907c",
+            
+        }
     ]
 }
+    
