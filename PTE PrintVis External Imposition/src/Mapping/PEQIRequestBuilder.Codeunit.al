@@ -93,7 +93,9 @@ codeunit 50535 "PEQI Request Builder"
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
         JobItem.SetRange(Version, VersionNo);
-        JobItem.SetRange(Active, true);
+        // "Active" is deliberately not filtered on. PrintVis leaves it false on job items that
+        // are plainly going to print, so filtering on it returned nothing at all and the job
+        // looked empty. Every job item of the version is taken instead.
         JobItem.SetFilter("Imposition Type", '<>%1', '');
         if JobItem.FindFirst() then
             if ImpositionCode.Get(JobItem."Imposition Type") then
