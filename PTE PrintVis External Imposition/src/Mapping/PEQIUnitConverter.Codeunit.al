@@ -61,26 +61,66 @@ codeunit 50545 "PEQI Unit Converter"
         exit(Round(Value * UnitConversion.Margin2Micrometer() / 1000, 0.01, '='));
     end;
 
+    /// <summary>The thinnest caliper, in microns, that could be a sheet of paper.</summary>
+    /// <remarks>
+    /// Tissue is around 30. Nothing a press feeds is in single figures, so a result below this is
+    /// not a thin paper, it is a misread unit.
+    /// </remarks>
+    local procedure MinPlausibleMicrons(): Decimal
+    begin
+        exit(10);
+    end;
+
     /// <summary>A paper's caliper, in microns.</summary>
     /// <remarks>
-    /// Two conversions, because caliper has a unit of its own: <c>Caliper2Format</c> takes it into
-    /// format units -- a tenth of a thousandth on a US setup entering mil, the grammage over ten
-    /// thousand on a metric one -- and <c>Format2Micrometer</c> takes format units into microns.
-    /// It depends on the paper's weight because some installations express caliper per unit
-    /// weight, which is why the item is passed rather than a bare number.
+    /// <para>
+    /// The first reading is PrintVis's own: thickness is held in the Paper Thickness unit, and
+    /// <c>Caliper2Format</c> converts it to format units — a thousandth on a US setup recording
+    /// points, bulk times grammage over ten thousand on a metric one. The same composition
+    /// PrintVis itself uses in <c>PVSJobCostingJournalLine</c>.
+    /// </para>
+    /// <para>
+    /// <b>The fallback is for data that disagrees with its own unit.</b>
+    /// <c>Insert_Defaults_US</c> defines Paper Thickness as Points with a factor of a thousand,
+    /// so a 70 lb book paper should read 3.8. The installation this was written against holds
+    /// 0.0038 — the same caliper expressed in inches, which is the format unit. Read by the book
+    /// that is 0.0965 microns, which rounds to nothing and drops the field, and the engine then
+    /// reports that the substrate records no caliper and cannot work out creep or a spine.
+    /// </para>
+    /// <para>
+    /// So both readings are computed and the plausible one is taken. The two differ by exactly
+    /// the unit''s own factor, and only one of them can be a sheet of paper, so there is nothing
+    /// to choose between beyond arithmetic. A shop whose data matches its setup never reaches the
+    /// second reading.
+    /// </para>
+    /// <para>
+    /// This is a tolerance, not a cure: the data and the Paper Thickness unit genuinely disagree,
+    /// and the clean fix is to make one of them match the other. Until then a right answer beats
+    /// a dropped field.
+    /// </para>
     /// </remarks>
     procedure ThicknessToMicrons(Item: Record Item): Decimal
     var
+        ByUnit: Decimal;
+        AsFormatUnits: Decimal;
         Caliper: Decimal;
     begin
         if Item."PVS Thickness" = 0 then
             exit(0);
 
         Caliper := UnitConversion.Caliper2Format(Item."PVS Weight", Item."PVS Weight Unit");
-        if Caliper = 0 then
-            Caliper := 1;
+        ByUnit := Item."PVS Thickness" * Caliper * UnitConversion.Format2Micrometer();
+        if ByUnit >= MinPlausibleMicrons() then
+            exit(Round(ByUnit, 0.01, '='));
 
-        exit(Round(Item."PVS Thickness" * Caliper * UnitConversion.Format2Micrometer(), 0.01, '='));
+        // Read as though the stored value were already in format units.
+        AsFormatUnits := Item."PVS Thickness" * UnitConversion.Format2Micrometer();
+        if AsFormatUnits >= MinPlausibleMicrons() then
+            exit(Round(AsFormatUnits, 0.01, '='));
+
+        // Neither is a paper. Nothing is sent, and the engine says the caliper is unrecorded --
+        // which is true, and better than a number that is not one.
+        exit(0);
     end;
 
     /// <summary>A paper's weight in grams per square metre, whatever PrintVis records it in.</summary>
