@@ -46,8 +46,15 @@ codeunit 50537 "PEQI Catalog Mapper"
                 // Converted, because PrintVis stores these in the installation's own unit and
                 // the engine reads every '...Mm' field as millimetres. Our own setup fields below
                 // are already named '(mm)' and are left alone.
-                JsonHelper.AddDecimal(Sheet, 'widthMm', Units.ToMm(Item."PVS Format 1"));
-                JsonHelper.AddDecimal(Sheet, 'heightMm', Units.ToMm(Item."PVS Format 2"));
+                //
+                // Larger into width, smaller into height, always. A press sheet is never
+                // expressed or run the other way up, and PrintVis does not keep the two formats
+                // in that order -- every paper in the sample had Format 1 as the short side. Sent
+                // as stored, a 28 x 40 sheet reached the engine as 280 wide by 400 tall: a sheet
+                // that does not exist, which the solver then had to turn back the right way
+                // before it could place anything on it.
+                JsonHelper.AddDecimal(Sheet, 'widthMm', Units.ToMm(Longer(Item)));
+                JsonHelper.AddDecimal(Sheet, 'heightMm', Units.ToMm(Shorter(Item)));
 
                 Grain := PaperSetup.EffectiveGrain();
                 if Grain <> Grain::" " then
@@ -64,6 +71,22 @@ codeunit 50537 "PEQI Catalog Mapper"
                 Sheets.Add(Sheet);
             end;
         until PaperSetup.Next() = 0;
+    end;
+
+    /// <summary>The sheet's long edge, which is always its width.</summary>
+    local procedure Longer(Item: Record Item): Decimal
+    begin
+        if Item."PVS Format 1" >= Item."PVS Format 2" then
+            exit(Item."PVS Format 1");
+        exit(Item."PVS Format 2");
+    end;
+
+    /// <summary>The sheet's short edge, which is always its height.</summary>
+    local procedure Shorter(Item: Record Item): Decimal
+    begin
+        if Item."PVS Format 1" >= Item."PVS Format 2" then
+            exit(Item."PVS Format 2");
+        exit(Item."PVS Format 1");
     end;
 
     local procedure ItemName(Item: Record Item): Text
