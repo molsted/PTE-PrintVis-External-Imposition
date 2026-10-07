@@ -102,8 +102,8 @@ codeunit 50536 "PEQI Part Mapper"
         JsonHelper.AddInteger(Part, 'pageCount', TotalPages);
         // The finished page, in the installation's unit. Same conversion as the sheets:
         // a trim and a sheet have to be in the same unit or nothing fits anything.
-        JsonHelper.AddDecimal(Part, 'trimWidthMm', Units.ToMm(FirstItem.Width));
-        JsonHelper.AddDecimal(Part, 'trimHeightMm', Units.ToMm(FirstItem.Length));
+        JsonHelper.AddDecimal(Part, 'trimWidthMm', Units.FormatToMm(FirstItem.Width));
+        JsonHelper.AddDecimal(Part, 'trimHeightMm', Units.FormatToMm(FirstItem.Length));
         JsonHelper.AddText(Part, 'grainRule', EnumNames.GrainRule(PartMapping."Grain Rule"));
         JsonHelper.AddInteger(Part, 'frontColors', FrontColors);
         JsonHelper.AddInteger(Part, 'backColors', BackColors);

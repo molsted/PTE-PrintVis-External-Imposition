@@ -53,8 +53,8 @@ codeunit 50537 "PEQI Catalog Mapper"
                 // as stored, a 28 x 40 sheet reached the engine as 280 wide by 400 tall: a sheet
                 // that does not exist, which the solver then had to turn back the right way
                 // before it could place anything on it.
-                JsonHelper.AddDecimal(Sheet, 'widthMm', Units.ToMm(Longer(Item)));
-                JsonHelper.AddDecimal(Sheet, 'heightMm', Units.ToMm(Shorter(Item)));
+                JsonHelper.AddDecimal(Sheet, 'widthMm', Units.FormatToMm(Longer(Item)));
+                JsonHelper.AddDecimal(Sheet, 'heightMm', Units.FormatToMm(Shorter(Item)));
 
                 Grain := PaperSetup.EffectiveGrain();
                 if Grain <> Grain::" " then
@@ -66,8 +66,8 @@ codeunit 50537 "PEQI Catalog Mapper"
                 // exactly 130 is written '130.0' and is rejected; this is not only about papers
                 // measured in halves. PrintVis records both to a precision neither the engine
                 // nor a press cares about, so rounding at the boundary loses nothing.
-                JsonHelper.AddIntegerIfSet(Sheet, 'grammageGsm', Round(Grammage(PaperSetup, Item, Setup), 1, '='));
-                JsonHelper.AddIntegerIfSet(Sheet, 'caliperMicrons', Round(Caliper(PaperSetup, Item, Setup), 1, '='));
+                JsonHelper.AddIntegerIfSet(Sheet, 'grammageGsm', Round(Grammage(PaperSetup, Item), 1, '='));
+                JsonHelper.AddIntegerIfSet(Sheet, 'caliperMicrons', Round(Caliper(PaperSetup, Item), 1, '='));
                 Sheets.Add(Sheet);
             end;
         until PaperSetup.Next() = 0;
@@ -103,18 +103,18 @@ codeunit 50537 "PEQI Catalog Mapper"
         exit(Item."PVS Paper No.");
     end;
 
-    local procedure Grammage(PaperSetup: Record "PEQI Paper Setup"; Item: Record Item; Setup: Record "PEQI Imposition Setup"): Decimal
+    local procedure Grammage(PaperSetup: Record "PEQI Paper Setup"; Item: Record Item): Decimal
     begin
         if PaperSetup."Grammage Override (gsm)" <> 0 then
             exit(PaperSetup."Grammage Override (gsm)");
-        exit(Setup.WeightToGsm(Item."PVS Weight"));
+        exit(Units.WeightToGsm(Item));
     end;
 
-    local procedure Caliper(PaperSetup: Record "PEQI Paper Setup"; Item: Record Item; Setup: Record "PEQI Imposition Setup"): Decimal
+    local procedure Caliper(PaperSetup: Record "PEQI Paper Setup"; Item: Record Item): Decimal
     begin
         if PaperSetup."Caliper Override (microns)" <> 0 then
             exit(PaperSetup."Caliper Override (microns)");
-        exit(Setup.ThicknessToMicrons(Item."PVS Thickness"));
+        exit(Units.ThicknessToMicrons(Item));
     end;
 
     /// <summary>The press half. The measurements come from PrintVis's cost centre
@@ -139,20 +139,20 @@ codeunit 50537 "PEQI Catalog Mapper"
             JsonHelper.AddText(Press, 'name', PressName(PressSetup, Config));
             JsonHelper.AddText(Press, 'type', EnumNames.PressType(PressType(PressSetup, Config)));
 
-            JsonHelper.AddDecimal(Press, 'maxSheetWidthMm', Units.ToMm(Config."Max Printing Format Width"));
-            JsonHelper.AddDecimal(Press, 'maxSheetHeightMm', Units.ToMm(Config."Max Printing Format Length"));
-            JsonHelper.AddDecimalIfSet(Press, 'minSheetWidthMm', Units.ToMm(Config."Min Print Format Width"));
-            JsonHelper.AddDecimalIfSet(Press, 'minSheetHeightMm', Units.ToMm(Config."Min Print Format Length"));
+            JsonHelper.AddDecimal(Press, 'maxSheetWidthMm', Units.FormatToMm(Config."Max Printing Format Width"));
+            JsonHelper.AddDecimal(Press, 'maxSheetHeightMm', Units.FormatToMm(Config."Max Printing Format Length"));
+            JsonHelper.AddDecimalIfSet(Press, 'minSheetWidthMm', Units.FormatToMm(Config."Min Print Format Width"));
+            JsonHelper.AddDecimalIfSet(Press, 'minSheetHeightMm', Units.FormatToMm(Config."Min Print Format Length"));
 
             JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginTopMm', PressSetup."Non-Printable Top (mm)");
             JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginBottomMm', PressSetup."Non-Printable Bottom (mm)");
             JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginLeftMm', PressSetup."Non-Printable Left (mm)");
             JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginRightMm', PressSetup."Non-Printable Right (mm)");
 
-            JsonHelper.AddDecimalIfSet(Press, 'gripperMarginMm', Units.ToMm(Config."Gripper Edge"));
+            JsonHelper.AddDecimalIfSet(Press, 'gripperMarginMm', Units.MarginToMm(Config."Gripper Edge"));
             if PressSetup."Gripper Edge Side" <> PressSetup."Gripper Edge Side"::" " then
                 JsonHelper.AddText(Press, 'gripperEdge', EnumNames.PressEdge(PressSetup."Gripper Edge Side"));
-            JsonHelper.AddDecimalIfSet(Press, 'sideLayMarginMm', Units.ToMm(Config.Pull));
+            JsonHelper.AddDecimalIfSet(Press, 'sideLayMarginMm', Units.MarginToMm(Config.Pull));
             if PressSetup."Side Lay Edge" <> PressSetup."Side Lay Edge"::" " then
                 JsonHelper.AddText(Press, 'sideLayEdge', EnumNames.PressEdge(PressSetup."Side Lay Edge"));
 
@@ -169,8 +169,8 @@ codeunit 50537 "PEQI Catalog Mapper"
             JsonHelper.AddIntegerIfSet(Press, 'sheetsPerHour', PressSetup."Sheets Per Hour");
 
             JsonHelper.AddText(Press, 'plateName', Config."Plate No.");
-            JsonHelper.AddDecimalIfSet(Press, 'plateWidthMm', Units.ToMm(Config."Plate Width"));
-            JsonHelper.AddDecimalIfSet(Press, 'plateHeightMm', Units.ToMm(Config."Plate Length"));
+            JsonHelper.AddDecimalIfSet(Press, 'plateWidthMm', Units.FormatToMm(Config."Plate Width"));
+            JsonHelper.AddDecimalIfSet(Press, 'plateHeightMm', Units.FormatToMm(Config."Plate Length"));
             JsonHelper.AddDecimalIfSet(Press, 'platePunchMm', PressSetup."Plate Punch (mm)");
 
             Press.Add('workStyles', WorkStyles(PressSetup));

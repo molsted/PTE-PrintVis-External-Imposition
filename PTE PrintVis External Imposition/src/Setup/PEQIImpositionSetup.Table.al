@@ -57,6 +57,9 @@ table 50500 "PEQI Imposition Setup"
         field(32; "Default Trim Face (mm)"; Decimal) { Caption = 'Default Trim Face (mm)'; DecimalPlaces = 0 : 3; }
         field(40; "Thickness Is Microns"; Boolean)
         {
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Superseded by PVS Unit Conversion. Caliper2Format and Format2Micrometer state the caliper unit from PrintVis''s own setup, so there is nothing left for this flag to decide.';
+            ObsoleteTag = '1.0';
             Caption = 'Thickness Is Microns';
             // Escape hatch for data already held in microns. Normally false: PrintVis keeps
             // thickness in a thousandth of the general unit, which "PEQI Unit Converter"
@@ -64,9 +67,21 @@ table 50500 "PEQI Imposition Setup"
         }
         field(41; "Weight Is Gsm"; Boolean)
         {
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Superseded by "Grammage Weight Unit". A weight is not gsm or not-gsm: PrintVis records it in a named unit, and Convert_PaperWeight converts between them.';
+            ObsoleteTag = '1.0';
             Caption = 'Weight Is g/m2';
             InitValue = true;
         }
+        field(42; "Grammage Weight Unit"; Code[20])
+        {
+            Caption = 'Grammage Weight Unit';
+            TableRelation = "PVS Standard Units".Code where(Type = const("Paper weight"));
+            // Which of PrintVis's paper-weight units means grams per square metre. Shop data
+            // rather than a constant: a US installation records basis weights such as BOOK,
+            // where "70" is 70 lb book and about 104 gsm, not 70 gsm.
+        }
+
         field(50; "Last Substrate Id"; Integer)
         {
             Caption = 'Last Substrate Id';
@@ -142,19 +157,5 @@ table 50500 "PEQI Imposition Setup"
         exit(Setup."Last Substrate Id");
     end;
 
-    /// <summary>PVS Thickness to the engine's caliperMicrons.</summary>
-    procedure ThicknessToMicrons(Value: Decimal) Microns: Decimal
-    var
-        Units: Codeunit "PEQI Unit Converter";
-    begin
-        if "Thickness Is Microns" then
-            exit(Value);
-        exit(Units.MicroUnitToMicrons(Value));
-    end;
 
-    /// <summary>PVS Weight to the engine's grammageGsm.</summary>
-    procedure WeightToGsm(Value: Decimal): Decimal
-    begin
-        exit(Value);
-    end;
 }

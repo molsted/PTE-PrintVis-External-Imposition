@@ -82,13 +82,13 @@ page 50510 "PEQI Imposition Setup"
             group(Units)
             {
                 Caption = 'PrintVis Units';
-                field("Thickness Is Microns"; Rec."Thickness Is Microns")
+                field("Grammage Weight Unit"; Rec."Grammage Weight Unit")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Clear this if PVS Thickness is recorded in millimetres.';
+                    ToolTip = 'The PrintVis paper-weight unit that means grams per square metre. Paper weights are converted into it before they reach the engine, so a basis weight such as BOOK is not sent as though it were already gsm.';
                 }
-                field("Weight Is Gsm"; Rec."Weight Is Gsm") { ApplicationArea = All; }
             }
+
             group(Connection)
             {
                 Caption = 'Connection';
