@@ -16,9 +16,12 @@ codeunit 50536 "PEQI Part Mapper"
 {
     var
         JsonHelper: Codeunit "PEQI Json Helper";
+        Units: Codeunit "PEQI Unit Converter";
+        EnumNames: Codeunit "PEQI Enum Names";
         NoMappingErr: Label 'Component type %1 on job %2/%3/%4 has no imposition part mapping. Add it on the Imposition Part Mappings page.', Comment = '%1 component type, %2 case, %3 job, %4 version';
         NoPaperErr: Label 'Paper item %1 on component %2 is not set up for imposition. Add it on the Imposition Paper Setup page.', Comment = '%1 item no., %2 component type';
         FormatClashErr: Label 'Component %1 spans two trim formats: job item %2 is %3 x %4 and job item %5 is %6 x %7.', Comment = '%1 component, %2 %5 job item nos, %3 %4 %6 %7 dimensions';
+        NoComponentsErr: Label 'Job %1/%2/%3 has no job items, so there is nothing to impose.', Comment = '%1 case, %2 job, %3 version';
 
     /// <summary>One engine part per component type, pages summed across its job items.</summary>
     procedure BuildParts(CaseId: Integer; JobNo: Integer; VersionNo: Integer): JsonArray
@@ -31,10 +34,12 @@ codeunit 50536 "PEQI Part Mapper"
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
         JobItem.SetRange(Version, VersionNo);
-        JobItem.SetRange(Active, true);
+        // "Active" is deliberately not filtered on. PrintVis leaves it false on job items that
+        // are plainly going to print, so filtering on it returned nothing at all and the job
+        // looked empty. Every job item of the version is taken instead.
         JobItem.SetCurrentKey(ID, Job, Version, "Job Item No.");
         if not JobItem.FindSet() then
-            exit(Parts);
+            NoComponents(CaseId, JobNo, VersionNo);
 
         repeat
             ComponentType := JobItem."Component Type";
@@ -45,6 +50,18 @@ codeunit 50536 "PEQI Part Mapper"
         until JobItem.Next() = 0;
 
         exit(Parts);
+    end;
+
+    /// <summary>Refuses a job with nothing to impose, rather than sending no parts.</summary>
+    /// <remarks>
+    /// This used to return an empty array. The engine then refused the request with "the field
+    /// Parts must have a minimum length of 1" -- true, and useless to a planner, who is looking
+    /// at a job that plainly has components on it. Worse, it pointed at the editor rather than
+    /// at PrintVis, which is where the missing thing was.
+    /// </remarks>
+    local procedure NoComponents(CaseId: Integer; JobNo: Integer; VersionNo: Integer)
+    begin
+        Error(NoComponentsErr, CaseId, JobNo, VersionNo);
     end;
 
     local procedure BuildOnePart(CaseId: Integer; JobNo: Integer; VersionNo: Integer; ComponentType: Code[20]) Part: JsonObject
@@ -62,7 +79,6 @@ codeunit 50536 "PEQI Part Mapper"
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
         JobItem.SetRange(Version, VersionNo);
-        JobItem.SetRange(Active, true);
         JobItem.SetRange("Component Type", ComponentType);
         JobItem.FindSet();
         FirstItem := JobItem;
@@ -82,11 +98,13 @@ codeunit 50536 "PEQI Part Mapper"
         until JobItem.Next() = 0;
 
         JsonHelper.AddText(Part, 'name', ComponentType);
-        JsonHelper.AddText(Part, 'productType', Format(PartMapping."Product Type", 0, 9));
+        JsonHelper.AddText(Part, 'productType', EnumNames.ProductType(PartMapping."Product Type"));
         JsonHelper.AddInteger(Part, 'pageCount', TotalPages);
-        JsonHelper.AddDecimal(Part, 'trimWidthMm', FirstItem.Width);
-        JsonHelper.AddDecimal(Part, 'trimHeightMm', FirstItem.Length);
-        JsonHelper.AddText(Part, 'grainRule', Format(PartMapping."Grain Rule", 0, 9));
+        // The finished page, in the installation's unit. Same conversion as the sheets:
+        // a trim and a sheet have to be in the same unit or nothing fits anything.
+        JsonHelper.AddDecimal(Part, 'trimWidthMm', Units.ToMm(FirstItem.Width));
+        JsonHelper.AddDecimal(Part, 'trimHeightMm', Units.ToMm(FirstItem.Length));
+        JsonHelper.AddText(Part, 'grainRule', EnumNames.GrainRule(PartMapping."Grain Rule"));
         JsonHelper.AddInteger(Part, 'frontColors', FrontColors);
         JsonHelper.AddInteger(Part, 'backColors', BackColors);
         Part.Add('catalog', BuildPartCatalog(FirstItem));

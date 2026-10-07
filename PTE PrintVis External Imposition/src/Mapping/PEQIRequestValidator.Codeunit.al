@@ -116,7 +116,9 @@ codeunit 50538 "PEQI Request Validator"
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
         JobItem.SetRange(Version, VersionNo);
-        JobItem.SetRange(Active, true);
+        // "Active" is deliberately not filtered on. PrintVis leaves it false on job items that
+        // are plainly going to print, so filtering on it returned nothing at all and the job
+        // looked empty. Every job item of the version is taken instead.
         if not JobItem.FindSet() then
             exit;
 

@@ -19,6 +19,7 @@ codeunit 50535 "PEQI Request Builder"
         PartMapper: Codeunit "PEQI Part Mapper";
         CatalogMapper: Codeunit "PEQI Catalog Mapper";
         JsonHelper: Codeunit "PEQI Json Helper";
+        EnumNames: Codeunit "PEQI Enum Names";
         Validator: Codeunit "PEQI Request Validator";
         NoBindingErr: Label 'Finishing code %1 on job %2/%3/%4 has no imposition binding mapping. Add it on the Imposition Binding Mappings page.', Comment = '%1 finishing code, %2 case, %3 job, %4 version';
         NoJobErr: Label 'Job %1/%2/%3 does not exist.', Comment = '%1 case, %2 job, %3 version';
@@ -52,10 +53,10 @@ codeunit 50535 "PEQI Request Builder"
         ValidateOrError(CaseId, JobNo, VersionNo);
 
         RequestObject.Add('parts', PartMapper.BuildParts(CaseId, JobNo, VersionNo));
-        JsonHelper.AddText(RequestObject, 'binding', Format(BindingMapping.Binding, 0, 9));
-        JsonHelper.AddText(RequestObject, 'bindingSide', Format(BindingSide(CaseId, JobNo, VersionNo, BindingMapping), 0, 9));
+        JsonHelper.AddText(RequestObject, 'binding', EnumNames.Binding(BindingMapping.Binding));
+        JsonHelper.AddText(RequestObject, 'bindingSide', EnumNames.BindingSide(BindingSide(CaseId, JobNo, VersionNo, BindingMapping)));
         JsonHelper.AddIntegerIfSet(RequestObject, 'amount', PVSJob.Quantity);
-        JsonHelper.AddText(RequestObject, 'grainPolicy', Format(Setup."Grain Policy", 0, 9));
+        JsonHelper.AddText(RequestObject, 'grainPolicy', EnumNames.GrainPolicy(Setup."Grain Policy"));
         JsonHelper.AddInteger(RequestObject, 'maxSolutions', Setup."Max Solutions");
 
         // The self-contained set. Stating a half replaces its catalogue, so the
@@ -92,7 +93,9 @@ codeunit 50535 "PEQI Request Builder"
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
         JobItem.SetRange(Version, VersionNo);
-        JobItem.SetRange(Active, true);
+        // "Active" is deliberately not filtered on. PrintVis leaves it false on job items that
+        // are plainly going to print, so filtering on it returned nothing at all and the job
+        // looked empty. Every job item of the version is taken instead.
         JobItem.SetFilter("Imposition Type", '<>%1', '');
         if JobItem.FindFirst() then
             if ImpositionCode.Get(JobItem."Imposition Type") then

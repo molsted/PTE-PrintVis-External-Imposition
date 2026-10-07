@@ -18,6 +18,8 @@ codeunit 50537 "PEQI Catalog Mapper"
 {
     var
         JsonHelper: Codeunit "PEQI Json Helper";
+        Units: Codeunit "PEQI Unit Converter";
+        EnumNames: Codeunit "PEQI Enum Names";
 
     /// <summary>The paper half. Dimensions, grammage, caliper and grain are read
     /// live from the item so they cannot drift from PrintVis; the setup row
@@ -41,15 +43,24 @@ codeunit 50537 "PEQI Catalog Mapper"
                 JsonHelper.AddInteger(Sheet, 'id', PaperSetup."Substrate Id");
                 JsonHelper.AddText(Sheet, 'name', ItemName(Item));
                 JsonHelper.AddText(Sheet, 'vendorSku', VendorSku(PaperSetup, Item));
-                JsonHelper.AddDecimal(Sheet, 'widthMm', Item."PVS Format 1");
-                JsonHelper.AddDecimal(Sheet, 'heightMm', Item."PVS Format 2");
+                // Converted, because PrintVis stores these in the installation's own unit and
+                // the engine reads every '...Mm' field as millimetres. Our own setup fields below
+                // are already named '(mm)' and are left alone.
+                JsonHelper.AddDecimal(Sheet, 'widthMm', Units.ToMm(Item."PVS Format 1"));
+                JsonHelper.AddDecimal(Sheet, 'heightMm', Units.ToMm(Item."PVS Format 2"));
 
                 Grain := PaperSetup.EffectiveGrain();
                 if Grain <> Grain::" " then
-                    JsonHelper.AddText(Sheet, 'grain', Format(Grain, 0, 9));
+                    JsonHelper.AddText(Sheet, 'grain', EnumNames.SheetGrain(Grain));
 
-                JsonHelper.AddDecimalIfSet(Sheet, 'grammageGsm', Grammage(PaperSetup, Item, Setup));
-                JsonHelper.AddDecimalIfSet(Sheet, 'caliperMicrons', Caliper(PaperSetup, Item, Setup));
+                // Whole numbers, because the engine declares both as int and System.Text.Json
+                // refuses a fractional token for one -- it does not round, it throws, and the
+                // solve comes back 500. An AL Decimal carries its scale, so even a grammage of
+                // exactly 130 is written '130.0' and is rejected; this is not only about papers
+                // measured in halves. PrintVis records both to a precision neither the engine
+                // nor a press cares about, so rounding at the boundary loses nothing.
+                JsonHelper.AddIntegerIfSet(Sheet, 'grammageGsm', Round(Grammage(PaperSetup, Item, Setup), 1, '='));
+                JsonHelper.AddIntegerIfSet(Sheet, 'caliperMicrons', Round(Caliper(PaperSetup, Item, Setup), 1, '='));
                 Sheets.Add(Sheet);
             end;
         until PaperSetup.Next() = 0;
@@ -103,24 +114,24 @@ codeunit 50537 "PEQI Catalog Mapper"
 
             JsonHelper.AddText(Press, 'id', GuidText(PressSetup."Press Id"));
             JsonHelper.AddText(Press, 'name', PressName(PressSetup, Config));
-            JsonHelper.AddText(Press, 'type', Format(PressType(PressSetup, Config), 0, 9));
+            JsonHelper.AddText(Press, 'type', EnumNames.PressType(PressType(PressSetup, Config)));
 
-            JsonHelper.AddDecimal(Press, 'maxSheetWidthMm', Config."Max Printing Format Width");
-            JsonHelper.AddDecimal(Press, 'maxSheetHeightMm', Config."Max Printing Format Length");
-            JsonHelper.AddDecimalIfSet(Press, 'minSheetWidthMm', Config."Min Print Format Width");
-            JsonHelper.AddDecimalIfSet(Press, 'minSheetHeightMm', Config."Min Print Format Length");
+            JsonHelper.AddDecimal(Press, 'maxSheetWidthMm', Units.ToMm(Config."Max Printing Format Width"));
+            JsonHelper.AddDecimal(Press, 'maxSheetHeightMm', Units.ToMm(Config."Max Printing Format Length"));
+            JsonHelper.AddDecimalIfSet(Press, 'minSheetWidthMm', Units.ToMm(Config."Min Print Format Width"));
+            JsonHelper.AddDecimalIfSet(Press, 'minSheetHeightMm', Units.ToMm(Config."Min Print Format Length"));
 
             JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginTopMm', PressSetup."Non-Printable Top (mm)");
             JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginBottomMm', PressSetup."Non-Printable Bottom (mm)");
             JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginLeftMm', PressSetup."Non-Printable Left (mm)");
             JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginRightMm', PressSetup."Non-Printable Right (mm)");
 
-            JsonHelper.AddDecimalIfSet(Press, 'gripperMarginMm', Config."Gripper Edge");
+            JsonHelper.AddDecimalIfSet(Press, 'gripperMarginMm', Units.ToMm(Config."Gripper Edge"));
             if PressSetup."Gripper Edge Side" <> PressSetup."Gripper Edge Side"::" " then
-                JsonHelper.AddText(Press, 'gripperEdge', Format(PressSetup."Gripper Edge Side", 0, 9));
-            JsonHelper.AddDecimalIfSet(Press, 'sideLayMarginMm', Config.Pull);
+                JsonHelper.AddText(Press, 'gripperEdge', EnumNames.PressEdge(PressSetup."Gripper Edge Side"));
+            JsonHelper.AddDecimalIfSet(Press, 'sideLayMarginMm', Units.ToMm(Config.Pull));
             if PressSetup."Side Lay Edge" <> PressSetup."Side Lay Edge"::" " then
-                JsonHelper.AddText(Press, 'sideLayEdge', Format(PressSetup."Side Lay Edge", 0, 9));
+                JsonHelper.AddText(Press, 'sideLayEdge', EnumNames.PressEdge(PressSetup."Side Lay Edge"));
 
             // Both image-area bounds are needed for either to apply.
             if (PressSetup."Max Image Area Width (mm)" <> 0) and (PressSetup."Max Image Area Height (mm)" <> 0) then begin
@@ -135,8 +146,8 @@ codeunit 50537 "PEQI Catalog Mapper"
             JsonHelper.AddIntegerIfSet(Press, 'sheetsPerHour', PressSetup."Sheets Per Hour");
 
             JsonHelper.AddText(Press, 'plateName', Config."Plate No.");
-            JsonHelper.AddDecimalIfSet(Press, 'plateWidthMm', Config."Plate Width");
-            JsonHelper.AddDecimalIfSet(Press, 'plateHeightMm', Config."Plate Length");
+            JsonHelper.AddDecimalIfSet(Press, 'plateWidthMm', Units.ToMm(Config."Plate Width"));
+            JsonHelper.AddDecimalIfSet(Press, 'plateHeightMm', Units.ToMm(Config."Plate Length"));
             JsonHelper.AddDecimalIfSet(Press, 'platePunchMm', PressSetup."Plate Punch (mm)");
 
             Press.Add('workStyles', WorkStyles(PressSetup));
