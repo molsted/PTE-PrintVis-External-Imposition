@@ -19,6 +19,7 @@ codeunit 50537 "PEQI Catalog Mapper"
     var
         JsonHelper: Codeunit "PEQI Json Helper";
         Units: Codeunit "PEQI Unit Converter";
+        EnumNames: Codeunit "PEQI Enum Names";
 
     /// <summary>The paper half. Dimensions, grammage, caliper and grain are read
     /// live from the item so they cannot drift from PrintVis; the setup row
@@ -50,7 +51,7 @@ codeunit 50537 "PEQI Catalog Mapper"
 
                 Grain := PaperSetup.EffectiveGrain();
                 if Grain <> Grain::" " then
-                    JsonHelper.AddText(Sheet, 'grain', Format(Grain, 0, 9));
+                    JsonHelper.AddText(Sheet, 'grain', EnumNames.SheetGrain(Grain));
 
                 // Whole numbers, because the engine declares both as int and System.Text.Json
                 // refuses a fractional token for one -- it does not round, it throws, and the
@@ -113,7 +114,7 @@ codeunit 50537 "PEQI Catalog Mapper"
 
             JsonHelper.AddText(Press, 'id', GuidText(PressSetup."Press Id"));
             JsonHelper.AddText(Press, 'name', PressName(PressSetup, Config));
-            JsonHelper.AddText(Press, 'type', Format(PressType(PressSetup, Config), 0, 9));
+            JsonHelper.AddText(Press, 'type', EnumNames.PressType(PressType(PressSetup, Config)));
 
             JsonHelper.AddDecimal(Press, 'maxSheetWidthMm', Units.ToMm(Config."Max Printing Format Width"));
             JsonHelper.AddDecimal(Press, 'maxSheetHeightMm', Units.ToMm(Config."Max Printing Format Length"));
@@ -127,10 +128,10 @@ codeunit 50537 "PEQI Catalog Mapper"
 
             JsonHelper.AddDecimalIfSet(Press, 'gripperMarginMm', Units.ToMm(Config."Gripper Edge"));
             if PressSetup."Gripper Edge Side" <> PressSetup."Gripper Edge Side"::" " then
-                JsonHelper.AddText(Press, 'gripperEdge', Format(PressSetup."Gripper Edge Side", 0, 9));
+                JsonHelper.AddText(Press, 'gripperEdge', EnumNames.PressEdge(PressSetup."Gripper Edge Side"));
             JsonHelper.AddDecimalIfSet(Press, 'sideLayMarginMm', Units.ToMm(Config.Pull));
             if PressSetup."Side Lay Edge" <> PressSetup."Side Lay Edge"::" " then
-                JsonHelper.AddText(Press, 'sideLayEdge', Format(PressSetup."Side Lay Edge", 0, 9));
+                JsonHelper.AddText(Press, 'sideLayEdge', EnumNames.PressEdge(PressSetup."Side Lay Edge"));
 
             // Both image-area bounds are needed for either to apply.
             if (PressSetup."Max Image Area Width (mm)" <> 0) and (PressSetup."Max Image Area Height (mm)" <> 0) then begin
