@@ -20,6 +20,8 @@ codeunit 50544 "PEQI Preview Writer"
     var
         JsonHelper: Codeunit "PEQI Json Helper";
         SkipCodeTok: Label 'PREVIEW_NOT_WRITTEN', Locked = true;
+        WrongEntryCodeTok: Label 'PREVIEW_WRONG_ENTRY', Locked = true;
+        WrongEntryMsg: Label 'A preview arrived for imposition entry %1, which is not this one, so it was not filed.', Comment = '%1 the entry key the editor sent';
         SkipMsg: Label 'The plan has %1 press runs but the job has %2 PrintVis sheets, so no sheet preview was written.', Comment = '%1 run count, %2 sheet count';
 
     /// <summary>Files one sheet preview against its PVS Job Sheet, by ordinal, and
@@ -38,6 +40,15 @@ codeunit 50544 "PEQI Preview Writer"
             exit;
         if JsonHelper.ReadInteger(Preview, 'v') <> 1 then
             exit;
+
+        // Reported rather than thrown, unlike the chosen solution. Previews arrive as a burst
+        // and an error would abandon the rest mid-stream; the picture is also the one thing
+        // here that can be missing without the plan being wrong. Writing it against the wrong
+        // sheet, on the other hand, is silent and permanent - hence the check.
+        if JsonHelper.ReadText(Preview, 'entryKey') <> ImpositionJob.EntryKey() then begin
+            DiagnoseWrongEntry(ImpositionJob, JsonHelper.ReadText(Preview, 'entryKey'));
+            exit;
+        end;
 
         RunCount := CountRuns(ImpositionJob);
         SheetCount := CountSheets(ImpositionJob);
@@ -156,6 +167,32 @@ codeunit 50544 "PEQI Preview Writer"
                 exit;
             end;
         until PressRun.Next() = 0;
+    end;
+
+    local procedure DiagnoseWrongEntry(var ImpositionJob: Record "PEQI Imposition Job"; SentKey: Text)
+    var
+        Diagnostic: Record "PEQI Diagnostic";
+    begin
+        Diagnostic.SetRange("Case ID", ImpositionJob."Case ID");
+        Diagnostic.SetRange(Job, ImpositionJob.Job);
+        Diagnostic.SetRange(Version, ImpositionJob.Version);
+        Diagnostic.SetRange("Entry No.", ImpositionJob."Entry No.");
+        Diagnostic.SetRange("Code", WrongEntryCodeTok);
+        if not Diagnostic.IsEmpty() then
+            exit;
+
+        Diagnostic.Init();
+        Diagnostic."Case ID" := ImpositionJob."Case ID";
+        Diagnostic.Job := ImpositionJob.Job;
+        Diagnostic.Version := ImpositionJob.Version;
+        Diagnostic."Entry No." := ImpositionJob."Entry No.";
+        Diagnostic."Line No." := 990100;
+        Diagnostic.Severity := Diagnostic.Severity::Warn;
+        Diagnostic."Code" := WrongEntryCodeTok;
+        Diagnostic."Count" := 1;
+        Diagnostic.Source := Diagnostic.Source::Preview;
+        Diagnostic."Example Message" := CopyStr(StrSubstNo(WrongEntryMsg, SentKey), 1, MaxStrLen(Diagnostic."Example Message"));
+        Diagnostic.Insert(true);
     end;
 
     local procedure Diagnose(var ImpositionJob: Record "PEQI Imposition Job"; RunCount: Integer; SheetCount: Integer)

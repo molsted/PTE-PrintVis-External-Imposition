@@ -124,7 +124,7 @@ blank in silence.
 
 ### 5.4 `PEQI Binding Mapping` (50503) — key: `Finishing Code`
 
-Maps `PVS Job`.`Finishing` to the engine's `binding` enum, plus the default
+Maps the job's finishing code (§6.2) to the engine's `binding` enum, plus the default
 product type and the default trim/milling values for that binding.
 
 ### 5.5 `PEQI Part Mapping` (50504) — key: `Component Type`
@@ -199,7 +199,10 @@ a case to reconcile; the builder asserts it and fails naming both job items.
 
 ### 6.2 Job level
 
-`binding` ← `PEQI Binding Mapping` on `PVS Job`.`Finishing`.
+`binding` ← `PEQI Binding Mapping` on `PVS Job`.`Finishing`. When the job leaves it
+blank, the one distinct non-blank `PVS Job Sheet`.`Finishing` across the job's
+sheets is used instead; sheets that disagree are refused, because a job has one
+binding.
 `bindingSide` ← `PVS Imposition Code`.`Spine Side`.
 `amount` ← `PVS Job`.`Quantity`.
 `maxSolutions`, `grainPolicy`, `rotations`, `allowedWorkStyles` ← Setup defaults,

@@ -25,6 +25,7 @@ codeunit 50543 "PEQI Commit Manager"
         NotSolvedErr: Label 'This imposition has no chosen solution yet.';
         NoRequestErr: Label 'This imposition has no stored request.';
         BadResultErr: Label 'The imposition editor sent a result this version does not understand.';
+        WrongEntryErr: Label 'This result belongs to a different imposition entry (%1), so it was not stored. Re-open the editor on this entry and approve again.', Comment = '%1 the entry key the editor sent';
 
     procedure SetTransport(NewTransportType: Enum "PEQI Transport Type")
     begin
@@ -49,6 +50,12 @@ codeunit 50543 "PEQI Commit Manager"
             Error(BadResultErr);
         if JsonHelper.ReadInteger(Result, 'v') <> 1 then
             Error(BadResultErr);
+
+        // Before anything is written. An absent key counts as a mismatch: the editor echoes
+        // whatever the seed carried, so a result with none did not come from the seed this
+        // record sent - and storing it would overwrite a good plan with a stranger's.
+        if JsonHelper.ReadText(Result, 'entryKey') <> ImpositionJob.EntryKey() then
+            Error(WrongEntryErr, JsonHelper.ReadText(Result, 'entryKey'));
 
         if JsonHelper.ReadObject(Result, 'request', RequestObject) then begin
             RequestObject.WriteTo(RequestText);

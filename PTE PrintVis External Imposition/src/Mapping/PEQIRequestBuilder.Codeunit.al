@@ -39,11 +39,15 @@ codeunit 50535 "PEQI Request Builder"
         PVSJob: Record "PVS Job";
         BindingMapping: Record "PEQI Binding Mapping";
         Setup: Record "PEQI Imposition Setup";
+        FinishingCode: Code[20];
+        Problem: Text;
     begin
         if not PVSJob.Get(CaseId, JobNo, VersionNo) then
             Error(NoJobErr, CaseId, JobNo, VersionNo);
-        if not BindingMapping.Get(PVSJob.Finishing) then
-            Error(NoBindingErr, PVSJob.Finishing, CaseId, JobNo, VersionNo);
+        if not Validator.ResolveFinishing(CaseId, JobNo, VersionNo, FinishingCode, Problem) then
+            Error(ValidationErr, Problem);
+        if not BindingMapping.Get(FinishingCode) then
+            Error(NoBindingErr, FinishingCode, CaseId, JobNo, VersionNo);
         Setup := Setup.GetSetup();
         ValidateOrError(CaseId, JobNo, VersionNo);
 

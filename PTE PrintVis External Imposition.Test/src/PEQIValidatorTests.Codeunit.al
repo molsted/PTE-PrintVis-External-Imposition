@@ -101,4 +101,40 @@ codeunit 50611 "PEQI Validator Tests"
         // [THEN] the paper is named
         Assert.IsTrue(ProblemsMention(Problems, 'PAPER-NOSIZE'), 'The problem names the item');
     end;
+
+    [Test]
+    procedure AJobWhoseSheetsCarryAMappedFinishingPasses()
+    var
+        Problems: List of [Text];
+        BindingMapping: Record "PEQI Binding Mapping";
+    begin
+        // [GIVEN] a job with no finishing of its own, whose sheet says SS, and SS is mapped
+        BindingMapping.Init();
+        BindingMapping."Finishing Code" := 'SS';
+        BindingMapping.Insert(true);
+        TestData.AddJob(7101, 1, 1, '', 1000);
+        TestData.AddJobSheet(7101, 1, 1, 710101, 'SS');
+
+        // [WHEN] the job is validated
+        Validator.Validate(7101, 1, 1, Problems);
+
+        // [THEN] no finishing problem is reported
+        Assert.IsFalse(ProblemsMention(Problems, 'inishing'), 'The sheets supply the finishing');
+    end;
+
+    [Test]
+    procedure AJobWithNoFinishingAnywhereIsRefused()
+    var
+        Problems: List of [Text];
+    begin
+        // [GIVEN] a job with no finishing on it or on any sheet
+        TestData.AddJob(7102, 1, 1, '', 1000);
+        TestData.AddJobSheet(7102, 1, 1, 710201, '');
+
+        // [WHEN] the job is validated
+        Validator.Validate(7102, 1, 1, Problems);
+
+        // [THEN] the missing finishing is reported as missing, not as an unmapped blank code
+        Assert.IsTrue(ProblemsMention(Problems, 'no finishing code'), 'The problem says no finishing is set');
+    end;
 }
