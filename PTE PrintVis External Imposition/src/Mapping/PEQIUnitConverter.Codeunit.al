@@ -71,6 +71,19 @@ codeunit 50545 "PEQI Unit Converter"
         exit(10);
     end;
 
+    /// <summary>Microns in one unit of stored thickness, by the book.</summary>
+    /// <remarks>
+    /// The conversion <see cref="ThicknessToMicrons"/> tries first, without its tolerance. Exists
+    /// so the data fix can tell a row that disagrees with its unit from one that does not --
+    /// asking the tolerant reading would always answer "already correct", which is the whole
+    /// point of the tolerance and exactly the wrong question here.
+    /// </remarks>
+    procedure MicronsPerStoredUnit(Item: Record Item): Decimal
+    begin
+        exit(UnitConversion.Caliper2Format(Item."PVS Weight", Item."PVS Weight Unit")
+             * UnitConversion.Format2Micrometer());
+    end;
+
     /// <summary>A paper's caliper, in microns.</summary>
     /// <remarks>
     /// <para>
