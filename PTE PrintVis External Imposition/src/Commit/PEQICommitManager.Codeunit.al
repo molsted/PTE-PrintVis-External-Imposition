@@ -21,6 +21,7 @@ codeunit 50543 "PEQI Commit Manager"
         Client: Codeunit "PEQI Engine Client";
         Reader: Codeunit "PEQI Response Reader";
         JsonHelper: Codeunit "PEQI Json Helper";
+        EnumNames: Codeunit "PEQI Enum Names";
         TransportType: Enum "PEQI Transport Type";
         NotSolvedErr: Label 'This imposition has no chosen solution yet.';
         NoRequestErr: Label 'This imposition has no stored request.';
@@ -108,8 +109,11 @@ codeunit 50543 "PEQI Commit Manager"
 
         JsonHelper.AddText(RequestObject, 'jobId', JobId(ImpositionJob, Setup));
         JsonHelper.AddText(RequestObject, 'solutionId', ImpositionJob."Solution Id");
-        JsonHelper.AddText(RequestObject, 'version', Format(Setup."Jdf Version", 0, 9));
-        JsonHelper.AddText(RequestObject, 'flavour', Format(Setup."Jdf Flavour", 0, 9));
+        // Names, not ordinals. Two more of the Format(x, 0, 9) calls that were putting enum
+        // positions on the wire; these two happened to line up with the engine's, which is luck
+        // rather than a reason to leave them.
+        JsonHelper.AddText(RequestObject, 'version', EnumNames.JdfVersion(Setup."Jdf Version"));
+        JsonHelper.AddText(RequestObject, 'flavour', EnumNames.JdfFlavour(Setup."Jdf Flavour"));
         RequestObject.WriteTo(RequestText);
 
         Client.SetTransport(TransportType);

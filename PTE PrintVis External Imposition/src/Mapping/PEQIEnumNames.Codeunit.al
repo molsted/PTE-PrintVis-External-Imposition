@@ -159,6 +159,30 @@ codeunit 50546 "PEQI Enum Names"
         exit('Offset');
     end;
 
+    /// <summary>JdfVersion, as the engine spells it.</summary>
+    procedure JdfVersion(Value: Enum "PEQI Jdf Version"): Text
+    begin
+        case Value of
+            Value::V14:
+                exit('V14');
+            Value::V15:
+                exit('V15');
+        end;
+        exit('V14');
+    end;
+
+    /// <summary>The JDF writer to use.</summary>
+    procedure JdfFlavour(Value: Enum "PEQI Jdf Flavour"): Text
+    begin
+        case Value of
+            Value::Stripping:
+                exit('Stripping');
+            Value::PrepsTemplate:
+                exit('PrepsTemplate');
+        end;
+        exit('Stripping');
+    end;
+
     /// <summary>The press edge, as free text the engine parses: Left, Right, Bottom, Top.</summary>
     procedure PressEdge(Value: Enum "PEQI Press Edge"): Text
     begin
