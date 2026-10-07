@@ -16,6 +16,7 @@ codeunit 50536 "PEQI Part Mapper"
 {
     var
         JsonHelper: Codeunit "PEQI Json Helper";
+        Units: Codeunit "PEQI Unit Converter";
         NoMappingErr: Label 'Component type %1 on job %2/%3/%4 has no imposition part mapping. Add it on the Imposition Part Mappings page.', Comment = '%1 component type, %2 case, %3 job, %4 version';
         NoPaperErr: Label 'Paper item %1 on component %2 is not set up for imposition. Add it on the Imposition Paper Setup page.', Comment = '%1 item no., %2 component type';
         FormatClashErr: Label 'Component %1 spans two trim formats: job item %2 is %3 x %4 and job item %5 is %6 x %7.', Comment = '%1 component, %2 %5 job item nos, %3 %4 %6 %7 dimensions';
@@ -84,8 +85,10 @@ codeunit 50536 "PEQI Part Mapper"
         JsonHelper.AddText(Part, 'name', ComponentType);
         JsonHelper.AddText(Part, 'productType', Format(PartMapping."Product Type", 0, 9));
         JsonHelper.AddInteger(Part, 'pageCount', TotalPages);
-        JsonHelper.AddDecimal(Part, 'trimWidthMm', FirstItem.Width);
-        JsonHelper.AddDecimal(Part, 'trimHeightMm', FirstItem.Length);
+        // The finished page, in the installation's unit. Same conversion as the sheets:
+        // a trim and a sheet have to be in the same unit or nothing fits anything.
+        JsonHelper.AddDecimal(Part, 'trimWidthMm', Units.ToMm(FirstItem.Width));
+        JsonHelper.AddDecimal(Part, 'trimHeightMm', Units.ToMm(FirstItem.Length));
         JsonHelper.AddText(Part, 'grainRule', Format(PartMapping."Grain Rule", 0, 9));
         JsonHelper.AddInteger(Part, 'frontColors', FrontColors);
         JsonHelper.AddInteger(Part, 'backColors', BackColors);
