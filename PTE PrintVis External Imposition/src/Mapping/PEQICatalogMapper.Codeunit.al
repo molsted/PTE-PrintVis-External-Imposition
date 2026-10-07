@@ -48,8 +48,14 @@ codeunit 50537 "PEQI Catalog Mapper"
                 if Grain <> Grain::" " then
                     JsonHelper.AddText(Sheet, 'grain', Format(Grain, 0, 9));
 
-                JsonHelper.AddDecimalIfSet(Sheet, 'grammageGsm', Grammage(PaperSetup, Item, Setup));
-                JsonHelper.AddDecimalIfSet(Sheet, 'caliperMicrons', Caliper(PaperSetup, Item, Setup));
+                // Whole numbers, because the engine declares both as int and System.Text.Json
+                // refuses a fractional token for one -- it does not round, it throws, and the
+                // solve comes back 500. An AL Decimal carries its scale, so even a grammage of
+                // exactly 130 is written '130.0' and is rejected; this is not only about papers
+                // measured in halves. PrintVis records both to a precision neither the engine
+                // nor a press cares about, so rounding at the boundary loses nothing.
+                JsonHelper.AddIntegerIfSet(Sheet, 'grammageGsm', Round(Grammage(PaperSetup, Item, Setup), 1, '='));
+                JsonHelper.AddIntegerIfSet(Sheet, 'caliperMicrons', Round(Caliper(PaperSetup, Item, Setup), 1, '='));
                 Sheets.Add(Sheet);
             end;
         until PaperSetup.Next() = 0;
