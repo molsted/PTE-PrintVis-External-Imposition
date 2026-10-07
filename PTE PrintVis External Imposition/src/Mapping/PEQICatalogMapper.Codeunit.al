@@ -73,6 +73,41 @@ codeunit 50537 "PEQI Catalog Mapper"
         until PaperSetup.Next() = 0;
     end;
 
+    /// <summary>Which edge the sheet is laid to, as the engine names edges.</summary>
+    /// <remarks>
+    /// <para>
+    /// From PrintVis, not from our own setup. "PVS Cost Center Configuration"."Pull Side" records
+    /// it -- Left, Right or Both -- beside the Pull measurement itself, and reading one without
+    /// the other is what left every press stating a side lay of 5.08 mm against an edge of
+    /// nothing. The engine cannot place a margin it has no edge for and says so:
+    /// PRESS_MARGIN_EDGE_UNREADABLE.
+    /// </para>
+    /// <para>
+    /// Our own "Side Lay Edge" stays as an override, for a press whose configuration is wrong or
+    /// silent. It is checked first for that reason, and is blank by default.
+    /// </para>
+    /// <para>
+    /// <b>Both is not an edge.</b> A press that lays to either side has no single one, and
+    /// guessing would put the margin on a side the sheet may not be registered against. Blank is
+    /// returned and the field is omitted, which is the honest statement and leaves the engine to
+    /// treat the margins symmetrically.
+    /// </para>
+    /// </remarks>
+    local procedure SideLayEdge(PressSetup: Record "PEQI Press Setup"; Config: Record "PVS Cost Center Configuration"): Text
+    begin
+        if PressSetup."Side Lay Edge" <> PressSetup."Side Lay Edge"::" " then
+            exit(EnumNames.PressEdge(PressSetup."Side Lay Edge"));
+
+        case Config."Pull Side" of
+            Config."Pull Side"::Left:
+                exit('Left');
+            Config."Pull Side"::Right:
+                exit('Right');
+        end;
+
+        exit('');
+    end;
+
     /// <summary>The sheet's long edge, which is always its width.</summary>
     local procedure Longer(Item: Record Item): Decimal
     begin
@@ -125,6 +160,7 @@ codeunit 50537 "PEQI Catalog Mapper"
         PressSetup: Record "PEQI Press Setup";
         Config: Record "PVS Cost Center Configuration";
         Press: JsonObject;
+        SideLay: Text;
     begin
         PressSetup.SetRange("Use for Imposition", true);
         if not PressSetup.FindSet() then
@@ -153,8 +189,9 @@ codeunit 50537 "PEQI Catalog Mapper"
             if PressSetup."Gripper Edge Side" <> PressSetup."Gripper Edge Side"::" " then
                 JsonHelper.AddText(Press, 'gripperEdge', EnumNames.PressEdge(PressSetup."Gripper Edge Side"));
             JsonHelper.AddDecimalIfSet(Press, 'sideLayMarginMm', Units.MarginToMm(Config.Pull));
-            if PressSetup."Side Lay Edge" <> PressSetup."Side Lay Edge"::" " then
-                JsonHelper.AddText(Press, 'sideLayEdge', EnumNames.PressEdge(PressSetup."Side Lay Edge"));
+            SideLay := SideLayEdge(PressSetup, Config);
+            if SideLay <> '' then
+                JsonHelper.AddText(Press, 'sideLayEdge', SideLay);
 
             // Both image-area bounds are needed for either to apply.
             if (PressSetup."Max Image Area Width (mm)" <> 0) and (PressSetup."Max Image Area Height (mm)" <> 0) then begin
