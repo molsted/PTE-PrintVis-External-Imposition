@@ -74,4 +74,19 @@ codeunit 50602 "PEQI Test Data"
         PaperSetup.Insert(true);
         exit(PaperSetup."Substrate Id");
     end;
+
+    /// <summary>Inserts a PVS Job Sheet carrying a finishing code. PrintVis lets a
+    /// shop state finishing per sheet instead of on the job.</summary>
+    procedure AddJobSheet(CaseId: Integer; JobNo: Integer; VersionNo: Integer; SheetId: Integer; FinishingCode: Code[20])
+    var
+        JobSheet: Record "PVS Job Sheet";
+    begin
+        JobSheet.Init();
+        JobSheet.ID := CaseId;
+        JobSheet.Job := JobNo;
+        JobSheet.Version := VersionNo;
+        JobSheet."Sheet ID" := SheetId;
+        JobSheet.Finishing := FinishingCode;
+        JobSheet.Insert(false);
+    end;
 }

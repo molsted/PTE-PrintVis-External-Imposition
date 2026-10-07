@@ -18,6 +18,8 @@ codeunit 50538 "PEQI Request Validator"
 {
     var
         NoBindingMsg: Label 'Finishing code %1 has no imposition binding mapping.', Comment = '%1 finishing code';
+        NoFinishingMsg: Label 'Job %1/%2/%3 has no finishing code on the job or on any of its sheets.', Comment = '%1 case, %2 job, %3 version';
+        MixedFinishingMsg: Label 'The sheets of job %1/%2/%3 have different finishing codes (%4). Set the finishing on the job to choose one binding.', Comment = '%1 case, %2 job, %3 version, %4 comma-separated finishing codes';
         NoPartMsg: Label 'Component type %1 has no imposition part mapping.', Comment = '%1 component type';
         OddPagesMsg: Label 'Component %1 has %2 pages. A folded part needs an even count.', Comment = '%1 component, %2 page count';
         NoPaperSetupMsg: Label 'Paper item %1 used by component %2 is not set up for imposition.', Comment = '%1 item no., %2 component';
@@ -42,11 +44,64 @@ codeunit 50538 "PEQI Request Validator"
     var
         PVSJob: Record "PVS Job";
         BindingMapping: Record "PEQI Binding Mapping";
+        FinishingCode: Code[20];
+        Problem: Text;
     begin
         if not PVSJob.Get(CaseId, JobNo, VersionNo) then
             exit;
-        if not BindingMapping.Get(PVSJob.Finishing) then
-            Problems.Add(StrSubstNo(NoBindingMsg, PVSJob.Finishing));
+        if not ResolveFinishing(CaseId, JobNo, VersionNo, FinishingCode, Problem) then
+            Problems.Add(Problem)
+        else
+            if not BindingMapping.Get(FinishingCode) then
+                Problems.Add(StrSubstNo(NoBindingMsg, FinishingCode));
+    end;
+
+    /// <summary>The finishing code that decides the binding. PrintVis holds it on the
+    /// job, or, when the job leaves it blank, on each of the job's sheets. False, with
+    /// the reason in Problem, when no sheet names one or the sheets disagree.</summary>
+    procedure ResolveFinishing(CaseId: Integer; JobNo: Integer; VersionNo: Integer; var FinishingCode: Code[20]; var Problem: Text): Boolean
+    var
+        PVSJob: Record "PVS Job";
+        JobSheet: Record "PVS Job Sheet";
+        Codes: List of [Code[20]];
+    begin
+        Clear(FinishingCode);
+        Clear(Problem);
+        if PVSJob.Get(CaseId, JobNo, VersionNo) and (PVSJob.Finishing <> '') then begin
+            FinishingCode := PVSJob.Finishing;
+            exit(true);
+        end;
+
+        JobSheet.SetRange(ID, CaseId);
+        JobSheet.SetRange(Job, JobNo);
+        JobSheet.SetRange(Version, VersionNo);
+        JobSheet.SetFilter(Finishing, '<>%1', '');
+        if JobSheet.FindSet() then
+            repeat
+                if not Codes.Contains(JobSheet.Finishing) then
+                    Codes.Add(JobSheet.Finishing);
+            until JobSheet.Next() = 0;
+
+        case Codes.Count() of
+            0:
+                Problem := StrSubstNo(NoFinishingMsg, CaseId, JobNo, VersionNo);
+            1:
+                FinishingCode := Codes.Get(1);
+            else
+                Problem := StrSubstNo(MixedFinishingMsg, CaseId, JobNo, VersionNo, JoinCodes(Codes));
+        end;
+        exit(Problem = '');
+    end;
+
+    local procedure JoinCodes(Codes: List of [Code[20]]) Joined: Text
+    var
+        FinishingCode: Code[20];
+    begin
+        foreach FinishingCode in Codes do
+            if Joined = '' then
+                Joined := FinishingCode
+            else
+                Joined += ', ' + FinishingCode;
     end;
 
     local procedure ValidateComponents(CaseId: Integer; JobNo: Integer; VersionNo: Integer; var Problems: List of [Text])

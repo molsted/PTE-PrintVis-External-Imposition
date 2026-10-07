@@ -250,4 +250,87 @@ codeunit 50610 "PEQI Builder Tests"
         // solution back.
         Assert.AreEqual(First, Second, 'The same job builds the same request');
     end;
+
+    [Test]
+    procedure TheBindingFallsBackToTheSheetsWhenTheJobHasNoFinishing()
+    var
+        RequestObject: JsonObject;
+        Token: JsonToken;
+    begin
+        // [GIVEN] a job with no finishing of its own, whose sheets both say SS
+        AddBuildableJob(6101, '');
+        AddBindingMapping('SS', "PEQI Binding Type"::SaddleStitch);
+        TestData.AddJobSheet(6101, 1, 1, 610101, 'SS');
+        TestData.AddJobSheet(6101, 1, 1, 610102, 'SS');
+
+        // [WHEN] the request is built
+        RequestObject := RequestBuilder.BuildObject(6101, 1, 1);
+
+        // [THEN] the binding comes from the sheets' finishing code
+        RequestObject.Get('binding', Token);
+        Assert.AreEqual(Format("PEQI Binding Type"::SaddleStitch, 0, 9), Token.AsValue().AsText(), 'The sheets name the binding');
+    end;
+
+    [Test]
+    procedure TheJobsOwnFinishingWinsOverItsSheets()
+    var
+        RequestObject: JsonObject;
+        Token: JsonToken;
+    begin
+        // [GIVEN] a job finished SS whose sheet carries an unmapped code
+        AddBuildableJob(6102, 'SS');
+        AddBindingMapping('SS', "PEQI Binding Type"::SaddleStitch);
+        TestData.AddJobSheet(6102, 1, 1, 610201, 'UNMAPPED');
+
+        // [WHEN] the request is built
+        RequestObject := RequestBuilder.BuildObject(6102, 1, 1);
+
+        // [THEN] the job's code decides, and the sheet's is never looked up
+        RequestObject.Get('binding', Token);
+        Assert.AreEqual(Format("PEQI Binding Type"::SaddleStitch, 0, 9), Token.AsValue().AsText(), 'The job names the binding');
+    end;
+
+    [Test]
+    procedure SheetsWithDifferentFinishingAreRefused()
+    begin
+        // [GIVEN] a job with no finishing whose sheets disagree
+        AddBuildableJob(6103, '');
+        AddBindingMapping('SS', "PEQI Binding Type"::SaddleStitch);
+        AddBindingMapping('PB', "PEQI Binding Type"::PerfectBound);
+        TestData.AddJobSheet(6103, 1, 1, 610301, 'SS');
+        TestData.AddJobSheet(6103, 1, 1, 610302, 'PB');
+
+        // [WHEN] the request is built
+        asserterror RequestBuilder.BuildObject(6103, 1, 1);
+
+        // [THEN] both codes are named, because one job has one binding
+        Assert.IsTrue(StrPos(GetLastErrorText(), 'SS') > 0, 'The error names SS');
+        Assert.IsTrue(StrPos(GetLastErrorText(), 'PB') > 0, 'The error names PB');
+    end;
+
+    local procedure AddBuildableJob(CaseId: Integer; FinishingCode: Code[20])
+    var
+        PressSetup: Record "PEQI Press Setup";
+    begin
+        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddPaper('PAPER-100');
+        TestData.AddJobItem(CaseId, 1, 1, 1, 'BODY', 32, 148, 210, 'PAPER-100');
+        TestData.AddJob(CaseId, 1, 1, FinishingCode, 5000);
+
+        PressSetup.Init();
+        PressSetup."Cost Center Code" := 'PRESS-A';
+        PressSetup.Configuration := 'STD';
+        PressSetup."Use for Imposition" := true;
+        PressSetup.Insert(true);
+    end;
+
+    local procedure AddBindingMapping(FinishingCode: Code[20]; Binding: Enum "PEQI Binding Type")
+    var
+        BindingMapping: Record "PEQI Binding Mapping";
+    begin
+        BindingMapping.Init();
+        BindingMapping."Finishing Code" := FinishingCode;
+        BindingMapping.Binding := Binding;
+        BindingMapping.Insert(true);
+    end;
 }
