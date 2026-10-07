@@ -85,33 +85,74 @@ codeunit 50545 "PEQI Unit Converter"
 
     /// <summary>A paper's weight in grams per square metre, whatever PrintVis records it in.</summary>
     /// <remarks>
-    /// <b>Not a passthrough.</b> PrintVis records weight in a unit of the paper's own, and a US
-    /// installation uses basis weights: the sample paper read "70" with unit BOOK, which is 70 lb
-    /// book -- about 104 gsm, not 70. Sent raw it understated every paper by half, which the
-    /// engine then measured press grammage limits and spines against.
     /// <para>
-    /// The conversion needs a target unit, and the code for "grams per square metre" is the
-    /// shop's own data rather than a constant, so it is named once on Imposition Setup. Basis
-    /// weights also depend on the sheet size, which is why the formats are passed through.
+    /// Computed here rather than handed to <c>Convert_PaperWeight</c>, which cannot do it:
+    /// that procedure is a pure area ratio between two weight units and never converts <i>mass</i>,
+    /// so pounds come out of it as pounds. On a US installation the question does not arise
+    /// anyway, because <c>Insert_Defaults_US</c> creates Bond, Cover, Bristol, Tag, Book and
+    /// Index and <b>no grammage row at all</b> — there is nothing to convert to.
+    /// </para>
+    /// <para>
+    /// What the table does give is the reference area a weight is quoted over.
+    /// <c>Create_US_Weight(''Book'', 25, 38)</c> sets Quantity 500 and a 25 x 38 basis size, so
+    /// BOOK is the weight of a 500-sheet ream of 25 x 38 inch paper; the metric default sets
+    /// Quantity 1000 over 100 x 100 cm, which is a thousand square metres. Divide the mass by
+    /// that area and the answer is grammage, in any system.
+    /// </para>
+    /// <para>
+    /// <b>The one thing the table does not record is the mass unit</b> — pounds against
+    /// kilogrammes — and it does not need to, because PrintVis seeds the pair together: the
+    /// procedure that writes the pound-basis rows writes the inch format row beside them, and
+    /// the one that writes the kilogramme row writes centimetres. The format unit is therefore
+    /// the honest tell, and it is read rather than assumed.
+    /// </para>
+    /// <para>
+    /// Checked against the sample: 70 BOOK over 500 x 25 x 38 in is 306.45 m2 carrying
+    /// 31,751 g, which is 103.6 gsm — against 70 sent raw, and a bulk that finally agrees with
+    /// the caliper.
     /// </para>
     /// </remarks>
     procedure WeightToGsm(Item: Record Item): Decimal
     var
-        Setup: Record "PEQI Imposition Setup";
+        WeightUnit: Record "PVS Standard Units";
+        AreaSqM: Decimal;
     begin
         if Item."PVS Weight" = 0 then
             exit(0);
+        if not WeightUnit.Get(WeightUnit.Type::"Paper weight", Item."PVS Weight Unit") then
+            exit(0);
 
-        Setup := Setup.GetSetup();
-        if Setup."Grammage Weight Unit" = '' then
-            Error(NoGrammageUnitErr);
+        // A row with no basis size quotes the weight over the paper''s own sheet.
+        if WeightUnit."Format 1" = 0 then
+            AreaSqM := WeightUnit.Quantity * SquareMetres(Item."PVS Format 1", Item."PVS Format 2")
+        else
+            AreaSqM := WeightUnit.Quantity * SquareMetres(WeightUnit."Format 1", WeightUnit."Format 2");
 
-        if Item."PVS Weight Unit" = Setup."Grammage Weight Unit" then
-            exit(Item."PVS Weight");
+        if AreaSqM = 0 then
+            exit(0);
 
-        exit(Round(UnitConversion.Convert_PaperWeight(
-            Item."PVS Weight", Item."PVS Weight Unit",
-            Item."PVS Format 1", Item."PVS Format 2",
-            Setup."Grammage Weight Unit"), 0.01, '='));
+        exit(Round(Item."PVS Weight" * GramsPerWeightUnit() / AreaSqM, 0.01, '='));
+    end;
+
+    /// <summary>Two format measurements as an area in square metres.</summary>
+    local procedure SquareMetres(Format1: Decimal; Format2: Decimal): Decimal
+    var
+        MicronsPerUnit: Decimal;
+    begin
+        MicronsPerUnit := UnitConversion.Format2Micrometer();
+        exit((Format1 * MicronsPerUnit / 1000000) * (Format2 * MicronsPerUnit / 1000000));
+    end;
+
+    /// <summary>Grams in one unit of recorded paper weight.</summary>
+    /// <remarks>
+    /// Pounds where formats are inches, kilogrammes otherwise. See <see cref="WeightToGsm"/>:
+    /// PrintVis seeds the weight rows and the format row together, so the format unit is what
+    /// says which system the weights are in.
+    /// </remarks>
+    local procedure GramsPerWeightUnit(): Decimal
+    begin
+        if UnitConversion.Format2Micrometer() = 25400 then
+            exit(453.59237);
+        exit(1000);
     end;
 }

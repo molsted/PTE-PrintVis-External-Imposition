@@ -76,6 +76,9 @@ table 50500 "PEQI Imposition Setup"
         field(42; "Grammage Weight Unit"; Code[20])
         {
             Caption = 'Grammage Weight Unit';
+            ObsoleteState = Pending;
+            ObsoleteReason = 'Not needed. Grammage is computed from the weight unit''s own basis area, and a US installation has no grammage row to point at in any case.';
+            ObsoleteTag = '1.0';
             TableRelation = "PVS Standard Units".Code where(Type = const("Paper weight"));
             // Which of PrintVis's paper-weight units means grams per square metre. Shop data
             // rather than a constant: a US installation records basis weights such as BOOK,

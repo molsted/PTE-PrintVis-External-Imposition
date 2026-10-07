@@ -79,15 +79,6 @@ page 50510 "PEQI Imposition Setup"
                     ToolTip = 'JDF JobID. %1 is the case ID, %2 the job, %3 the version.';
                 }
             }
-            group(Units)
-            {
-                Caption = 'PrintVis Units';
-                field("Grammage Weight Unit"; Rec."Grammage Weight Unit")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'The PrintVis paper-weight unit that means grams per square metre. Paper weights are converted into it before they reach the engine, so a basis weight such as BOOK is not sent as though it were already gsm.';
-                }
-            }
 
             group(Connection)
             {
