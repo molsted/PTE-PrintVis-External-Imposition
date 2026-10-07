@@ -12,6 +12,7 @@ namespace PrintersEquity.ExternalImposition.Document;
 
 using PrintersEquity.ExternalImposition.Commit;
 using PrintersEquity.ExternalImposition.Setup;
+using PrintersEquity.ExternalImposition.Studio;
 
 page 50517 "PEQI Imposition Job Card"
 {
@@ -52,6 +53,52 @@ page 50517 "PEQI Imposition Job Card"
                 field(Utilisation; Rec.Utilisation) { ApplicationArea = All; Editable = false; }
                 field("Worst Grain Verdict"; Rec."Worst Grain Verdict") { ApplicationArea = All; Editable = false; }
                 field(Runnable; Rec.Runnable) { ApplicationArea = All; Editable = false; }
+            }
+            group(Editor)
+            {
+                Caption = 'Imposition Editor';
+                Visible = EditorVisible;
+
+                usercontrol(Studio; "PEQI Imposition Studio")
+                {
+                    ApplicationArea = All;
+
+                    trigger ControlReady()
+                    var
+                        Setup: Record "PEQI Imposition Setup";
+                    begin
+                        Setup := Setup.GetSetup();
+                        if Setup."Spa Url" = '' then begin
+                            EditorVisible := false;
+                            CurrPage.Update(false);
+                            exit;
+                        end;
+                        CurrPage.Studio.LoadEditor(Setup."Spa Url", Rec.GetRequestJson(), SeedOptions());
+                    end;
+
+                    trigger SolutionChosen(ResultJson: Text)
+                    var
+                        CommitManager: Codeunit "PEQI Commit Manager";
+                    begin
+                        CommitManager.StoreChoice(Rec, ResultJson);
+                        CurrPage.Update(false);
+                    end;
+
+                    trigger PreviewReady(PreviewJson: Text)
+                    var
+                        PreviewWriter: Codeunit "PEQI Preview Writer";
+                    begin
+                        PreviewWriter.Receive(Rec, PreviewJson);
+                    end;
+
+                    trigger EditorFailed(Message: Text)
+                    begin
+                        EditorVisible := false;
+                        Rec."Last Error" := CopyStr(Message, 1, MaxStrLen(Rec."Last Error"));
+                        Rec.Modify(true);
+                        CurrPage.Update(false);
+                    end;
+                }
             }
             part(Runs; "PEQI Press Run Part")
             {
@@ -136,6 +183,25 @@ page 50517 "PEQI Imposition Job Card"
                               Version = field(Version), "Entry No." = field("Entry No.");
                 ToolTip = 'Shows the JDF tickets written from this imposition.';
             }
+
+            action(OpenEditorInBrowser)
+            {
+                ApplicationArea = All;
+                Caption = 'Open Editor in Browser';
+                Image = Web;
+                ToolTip = 'Opens the imposition editor in a browser tab. Use this when the embedded editor cannot load.';
+
+                trigger OnAction()
+                var
+                    Setup: Record "PEQI Imposition Setup";
+                    NoUrlErr: Label 'No editor URL is configured on the Imposition Setup page.';
+                begin
+                    Setup := Setup.GetSetup();
+                    if Setup."Spa Url" = '' then
+                        Error(NoUrlErr);
+                    Hyperlink(Setup."Spa Url");
+                end;
+            }
         }
     }
 
@@ -146,9 +212,20 @@ page 50517 "PEQI Imposition Job Card"
 
     trigger OnAfterGetRecord()
     begin
-        // EditorVisible and CanGenerate are read by controls added in later tasks.
         EditorVisible := Rec.Status in [Rec.Status::Draft, Rec.Status::Solved];
         HasError := Rec."Last Error" <> '';
         CanGenerate := Rec.Status = Rec.Status::Solved;
+    end;
+
+    local procedure SeedOptions(): Text
+    var
+        Options: JsonObject;
+        OptionsText: Text;
+    begin
+        // The product comes from the case, not from the operator typing it.
+        Options.Add('readonlyProduct', true);
+        Options.Add('startRoute', 'layout');
+        Options.WriteTo(OptionsText);
+        exit(OptionsText);
     end;
 }
