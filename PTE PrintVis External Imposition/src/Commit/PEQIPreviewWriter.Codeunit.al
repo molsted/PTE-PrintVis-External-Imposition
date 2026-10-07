@@ -22,16 +22,23 @@ codeunit 50544 "PEQI Preview Writer"
         SkipCodeTok: Label 'PREVIEW_NOT_WRITTEN', Locked = true;
         WrongEntryCodeTok: Label 'PREVIEW_WRONG_ENTRY', Locked = true;
         WrongEntryMsg: Label 'A preview arrived for imposition entry %1, which is not this one, so it was not filed.', Comment = '%1 the entry key the editor sent';
-        SkipMsg: Label 'The plan has %1 press runs but the job has %2 PrintVis sheets, so no sheet preview was written.', Comment = '%1 run count, %2 sheet count';
+        SkipMsg: Label 'The plan has %1 press sheets but the job has %2 PrintVis sheets, so no sheet preview was written.', Comment = '%1 plan sheet count, %2 PrintVis sheet count';
 
-    /// <summary>Files one sheet preview against its PVS Job Sheet, by ordinal, and
-    /// only when the engine's run count matches PrintVis's sheet count. When they
-    /// differ there is no key for the surplus run, and creating PVS Job Sheet rows
-    /// would be write-back to the calculation.</summary>
+    /// <summary>Files one sheet preview against its PVS Job Sheet, by ordinal, and only when the
+    /// plan has as many press sheets as the job has PrintVis sheets. When they differ there is no
+    /// key for the surplus sheet, and creating PVS Job Sheet rows would be write-back to the
+    /// calculation.</summary>
+    /// <remarks>
+    /// Counted in press sheets, not press runs. A run is several sheets coalesced by stock, feed,
+    /// press and work style, so a four-signature job on one paper is one run and four things on a
+    /// press -- and one picture cannot be filed against four PrintVis sheets. Comparing runs meant
+    /// that job was skipped entirely with a diagnostic about a mismatch that was really a
+    /// difference of units.
+    /// </remarks>
     procedure Receive(var ImpositionJob: Record "PEQI Imposition Job"; PreviewJson: Text)
     var
         Preview: JsonObject;
-        RunCount: Integer;
+        PlanSheetCount: Integer;
         SheetCount: Integer;
         Ordinal: Integer;
         SheetId: Integer;
@@ -50,11 +57,13 @@ codeunit 50544 "PEQI Preview Writer"
             exit;
         end;
 
-        RunCount := CountRuns(ImpositionJob);
+        // The engine's own sheet count, as stored from the chosen solution's metrics. Chosen
+        // always arrives before any preview, so it is set by the time this runs.
+        PlanSheetCount := ImpositionJob."Sheet Count";
         SheetCount := CountSheets(ImpositionJob);
 
-        if RunCount <> SheetCount then begin
-            Diagnose(ImpositionJob, RunCount, SheetCount);
+        if PlanSheetCount <> SheetCount then begin
+            Diagnose(ImpositionJob, PlanSheetCount, SheetCount);
             exit;
         end;
 
@@ -148,11 +157,22 @@ codeunit 50544 "PEQI Preview Writer"
         SheetImposition.Modify(true);
     end;
 
+    /// <summary>Points a press run at the PrintVis sheet it runs on, where that is one thing.</summary>
+    /// <remarks>
+    /// Only when every run is a single sheet. The ordinal counts press sheets, so using it to
+    /// index runs is only meaningful while the two lists are the same length; on a job whose
+    /// signatures share a feeder load, one run covers several PrintVis sheets and no single id
+    /// describes it. The previews are still filed -- it is the run's own sheet pointer that
+    /// cannot be stated, and leaving it empty says that honestly.
+    /// </remarks>
     local procedure LinkRun(ImpositionJob: Record "PEQI Imposition Job"; Ordinal: Integer; SheetId: Integer)
     var
         PressRun: Record "PEQI Press Run";
         Index: Integer;
     begin
+        if CountRuns(ImpositionJob) <> ImpositionJob."Sheet Count" then
+            exit;
+
         PressRun.SetRange("Case ID", ImpositionJob."Case ID");
         PressRun.SetRange(Job, ImpositionJob.Job);
         PressRun.SetRange(Version, ImpositionJob.Version);
@@ -195,7 +215,7 @@ codeunit 50544 "PEQI Preview Writer"
         Diagnostic.Insert(true);
     end;
 
-    local procedure Diagnose(var ImpositionJob: Record "PEQI Imposition Job"; RunCount: Integer; SheetCount: Integer)
+    local procedure Diagnose(var ImpositionJob: Record "PEQI Imposition Job"; PlanSheetCount: Integer; SheetCount: Integer)
     var
         Diagnostic: Record "PEQI Diagnostic";
     begin
@@ -217,7 +237,7 @@ codeunit 50544 "PEQI Preview Writer"
         Diagnostic."Code" := SkipCodeTok;
         Diagnostic."Count" := 1;
         Diagnostic.Source := Diagnostic.Source::Preview;
-        Diagnostic."Example Message" := CopyStr(StrSubstNo(SkipMsg, RunCount, SheetCount), 1, MaxStrLen(Diagnostic."Example Message"));
+        Diagnostic."Example Message" := CopyStr(StrSubstNo(SkipMsg, PlanSheetCount, SheetCount), 1, MaxStrLen(Diagnostic."Example Message"));
         Diagnostic.Insert(true);
     end;
 }
