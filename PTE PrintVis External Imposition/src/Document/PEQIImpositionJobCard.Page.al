@@ -225,6 +225,8 @@ page 50517 "PEQI Imposition Job Card"
         // The product comes from the case, not from the operator typing it.
         Options.Add('readonlyProduct', true);
         Options.Add('startRoute', 'layout');
+        // Echoed back on every result, and checked before anything is stored.
+        Options.Add('entryKey', Rec.EntryKey());
         Options.WriteTo(OptionsText);
         exit(OptionsText);
     end;

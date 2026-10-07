@@ -93,6 +93,17 @@ table 50505 "PEQI Imposition Job"
         OutStr.WriteText(RequestText);
     end;
 
+    /// <summary>Identifies this entry to the editor, which echoes it back unchanged with
+    /// every result. The editor opens in a frame and a planner can leave one open while
+    /// moving on, so a result arriving later has to prove which record it belongs to;
+    /// without that, a stale frame files one job's plan against another. It is the primary
+    /// key and nothing else: no timestamp, no user, no secret. It is a correlation token,
+    /// not an authorisation one - the add-in's origin check is what keeps strangers out.</summary>
+    procedure EntryKey(): Text
+    begin
+        exit(StrSubstNo('%1-%2-%3-%4', "Case ID", Job, Version, "Entry No."));
+    end;
+
     procedure GetRequestJson(): Text
     var
         InStr: InStream;
