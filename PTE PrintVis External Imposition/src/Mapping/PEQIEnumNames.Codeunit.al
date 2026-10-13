@@ -42,48 +42,68 @@ using PrintersEquity.ExternalImposition.Enums;
 codeunit 50546 "PEQI Enum Names"
 {
     var
-        BindingUnsupportedErr: Label 'The engine cannot impose %1 binding. It handles saddle stitch, perfect bound and unbound work; anything else has to be imposed by hand.', Comment = '%1 the binding name';
+        Cip4BindingNotSetErr: Label 'Finishing type %1 has no CIP4 Binding set. Set it on the finishing type.', Comment = '%1 finishing code';
+        Cip4BindingUnsupportedErr: Label 'Finishing type %1 is bound %2, which the engine does not impose. It imposes saddle stitch, perfect bound and unbound work.', Comment = '%1 finishing code, %2 CIP4 binding';
         BindingSideUnsupportedErr: Label 'The engine cannot bind on the %1 edge. It binds left, right or top.', Comment = '%1 the edge name';
         GrainNotSetErr: Label 'Component type %1 has no imposition grain rule. Set it on the component type card.', Comment = '%1 component type';
 
-    /// <summary>BindingType: None, SaddleStitch, PerfectBound.</summary>
-    procedure Binding(Value: Enum "PEQI Binding Type"): Text
+    /// <summary>Why a CIP4 Binding cannot be imposed; blank when it can.</summary>
+    /// <remarks>
+    /// Misc. is the option's default, so it means nobody set it -- refused rather than read as
+    /// unbound, or a saddle-stitched job whose finishing type was never filled in would be
+    /// imposed flat. Anything else the engine does not impose is refused naming it.
+    /// </remarks>
+    procedure Cip4BindingProblem(Cip4Binding: Text; FinishingCode: Code[20]): Text
+    var
+        EngineBinding: Text;
     begin
-        case Value of
-            Value::None:
-                exit('None');
-            Value::SaddleStitch:
-                exit('SaddleStitch');
-            Value::PerfectBound:
-                exit('PerfectBound');
-            // Side stitch and Wire-O are real bindings PrintVis quotes and the engine does not
-            // model. Refused by name: imposing one as saddle stitch would fold and collect a
-            // book that is meant to be drilled or punched flat.
-            Value::SideStitch:
-                Error(BindingUnsupportedErr, 'side stitch');
-            Value::WireO:
-                Error(BindingUnsupportedErr, 'Wire-O');
-        end;
-        Error(BindingUnsupportedErr, Format(Value));
+        if Cip4Binding = 'Misc.' then
+            exit(StrSubstNo(Cip4BindingNotSetErr, FinishingCode));
+        if not TranslateCip4Binding(Cip4Binding, EngineBinding) then
+            exit(StrSubstNo(Cip4BindingUnsupportedErr, FinishingCode, Cip4Binding));
+        exit('');
     end;
 
-    /// <summary>BindingSide: Left, Right, Top.</summary>
-    procedure BindingSide(Value: Enum "PEQI Binding Side"): Text
+    /// <summary>The engine's binding for a CIP4 Binding member name.</summary>
+    procedure BindingFromCip4(Cip4Binding: Text; FinishingCode: Code[20]): Text
+    var
+        EngineBinding: Text;
+        Problem: Text;
     begin
-        case Value of
-            Value::Left:
-                exit('Left');
-            Value::Right:
-                exit('Right');
-            Value::Top:
-                exit('Top');
-            // The engine binds on three edges. A foot-bound product is rare enough that
-            // refusing is honest, where sending 'Top' would put the spine at the wrong end and
-            // paginate the whole job upside down.
-            Value::Bottom:
+        Problem := Cip4BindingProblem(Cip4Binding, FinishingCode);
+        if Problem <> '' then
+            Error(Problem);
+        TranslateCip4Binding(Cip4Binding, EngineBinding);
+        exit(EngineBinding);
+    end;
+
+    /// <summary>The engine's binding side for a CIP4 BindingSide member name; blank if unset.</summary>
+    procedure BindingSideFromCip4(Cip4Side: Text): Text
+    begin
+        case Cip4Side of
+            'Left', 'Right', 'Top':
+                exit(Cip4Side);
+            // A foot-bound product is rare enough that refusing is honest; sending Top would
+            // put the spine at the wrong end and paginate the whole job upside down.
+            'Bottom':
                 Error(BindingSideUnsupportedErr, 'bottom');
         end;
-        Error(BindingSideUnsupportedErr, Format(Value));
+        exit('');
+    end;
+
+    local procedure TranslateCip4Binding(Cip4Binding: Text; var EngineBinding: Text): Boolean
+    begin
+        case Cip4Binding of
+            'SaddleStitch':
+                EngineBinding := 'SaddleStitch';
+            'Adhesive', 'SoftCover':
+                EngineBinding := 'PerfectBound';
+            'Cutting', 'Folding', 'Trimming', 'Laminating', 'ShapeCutting', 'Wrapping', 'ManualLabor':
+                EngineBinding := 'None';
+            else
+                exit(false);
+        end;
+        exit(true);
     end;
 
     /// <summary>GrainPolicy: Required, Preferred, Ignored. Ours runs the other way round.</summary>
@@ -104,7 +124,8 @@ codeunit 50546 "PEQI Enum Names"
     /// <remarks>
     /// Format() on an option returns its caption, which follows the user's language: a Danish
     /// session would send a Danish word. OptionMembers is the declared name list, untranslated,
-    /// indexed by the option's ordinal.
+    /// indexed by the option's ordinal. Member names are trimmed because PrintVis declares a
+    /// blank first member as a space.
     /// </remarks>
     procedure OptionMemberName(RecVariant: Variant; FieldNo: Integer): Text
     var
@@ -115,7 +136,7 @@ codeunit 50546 "PEQI Enum Names"
         RecRef.GetTable(RecVariant);
         FldRef := RecRef.Field(FieldNo);
         Ordinal := FldRef.Value;
-        exit(SelectStr(Ordinal + 1, FldRef.OptionMembers()));
+        exit(DelChr(SelectStr(Ordinal + 1, FldRef.OptionMembers()), '<>', ' '));
     end;
 
     /// <summary>GrainRule: ParallelToSpine, Free. A rule nobody has chosen is refused by name.</summary>

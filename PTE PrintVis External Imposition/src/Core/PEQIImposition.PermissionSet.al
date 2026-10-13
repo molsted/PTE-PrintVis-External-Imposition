@@ -19,7 +19,6 @@ permissionset 50580 "PEQI Imposition"
     Assignable = true;
     Permissions =
         tabledata "PEQI Imposition Setup" = R,
-        tabledata "PEQI Binding Mapping" = R,
         tabledata "PEQI Imposition Job" = RIMD,
         tabledata "PEQI Press Run" = RIMD,
         tabledata "PEQI Jdf Ticket" = RIM,

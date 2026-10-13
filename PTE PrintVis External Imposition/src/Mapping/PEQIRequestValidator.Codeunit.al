@@ -17,7 +17,7 @@ using PrintersEquity.ExternalImposition.Setup;
 codeunit 50538 "PEQI Request Validator"
 {
     var
-        NoBindingMsg: Label 'Finishing code %1 has no imposition binding mapping.', Comment = '%1 finishing code';
+        NoFinishingTypeMsg: Label 'Finishing code %1 has no finishing type in PrintVis.', Comment = '%1 finishing code';
         NoFinishingMsg: Label 'Job %1/%2/%3 has no finishing code on the job or on any of its sheets.', Comment = '%1 case, %2 job, %3 version';
         MixedFinishingMsg: Label 'The sheets of job %1/%2/%3 have different finishing codes (%4). Set the finishing on the job to choose one binding.', Comment = '%1 case, %2 job, %3 version, %4 comma-separated finishing codes';
         NoComponentTypeMsg: Label 'Component type %1 does not exist in PrintVis.', Comment = '%1 component type';
@@ -46,17 +46,25 @@ codeunit 50538 "PEQI Request Validator"
     local procedure ValidateJob(CaseId: Integer; JobNo: Integer; VersionNo: Integer; var Problems: List of [Text])
     var
         PVSJob: Record "PVS Job";
-        BindingMapping: Record "PEQI Binding Mapping";
+        FinishingType: Record "PVS Finishing Types";
+        EnumNames: Codeunit "PEQI Enum Names";
         FinishingCode: Code[20];
         Problem: Text;
+        Cip4Problem: Text;
     begin
         if not PVSJob.Get(CaseId, JobNo, VersionNo) then
             exit;
         if not ResolveFinishing(CaseId, JobNo, VersionNo, FinishingCode, Problem) then
             Problems.Add(Problem)
         else
-            if not BindingMapping.Get(FinishingCode) then
-                Problems.Add(StrSubstNo(NoBindingMsg, FinishingCode));
+            if not FinishingType.Get(FinishingCode) then
+                Problems.Add(StrSubstNo(NoFinishingTypeMsg, FinishingCode))
+            else begin
+                Cip4Problem := EnumNames.Cip4BindingProblem(
+                    EnumNames.OptionMemberName(FinishingType, FinishingType.FieldNo("CIP4 Binding")), FinishingCode);
+                if Cip4Problem <> '' then
+                    Problems.Add(Cip4Problem);
+            end;
     end;
 
     /// <summary>The finishing code that decides the binding. PrintVis holds it on the

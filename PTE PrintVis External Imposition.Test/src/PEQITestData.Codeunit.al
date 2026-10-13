@@ -94,11 +94,15 @@ codeunit 50602 "PEQI Test Data"
     procedure SetOptionByName(var RecRef: RecordRef; FieldNo: Integer; MemberName: Text)
     var
         FldRef: FieldRef;
+        Members: Text;
+        Count: Integer;
         Index: Integer;
     begin
         FldRef := RecRef.Field(FieldNo);
-        for Index := 1 to StrLen(FldRef.OptionMembers()) do
-            if SelectStr(Index, FldRef.OptionMembers()) = MemberName then begin
+        Members := FldRef.OptionMembers();
+        Count := StrLen(Members) - StrLen(DelChr(Members, '=', ',')) + 1;
+        for Index := 1 to Count do
+            if DelChr(SelectStr(Index, Members), '<>', ' ') = DelChr(MemberName, '<>', ' ') then begin
                 FldRef.Value := Index - 1;
                 exit;
             end;
@@ -217,5 +221,22 @@ codeunit 50602 "PEQI Test Data"
         Config.Insert(false);
         Config.Validate("PEQI Use for Imposition", true);
         Config.Modify(false);
+    end;
+
+    /// <summary>A PrintVis finishing type with a CIP4 Binding and binding side, by member name.</summary>
+    procedure AddFinishingType(FinishingCode: Code[20]; Cip4Binding: Text; Cip4Side: Text)
+    var
+        FinishingType: Record "PVS Finishing Types";
+        RecRef: RecordRef;
+    begin
+        if FinishingType.Get(FinishingCode) then
+            exit;
+        FinishingType.Init();
+        FinishingType.Code := FinishingCode;
+        FinishingType.Insert(false);
+        RecRef.GetTable(FinishingType);
+        SetOptionByName(RecRef, FinishingType.FieldNo("CIP4 Binding"), Cip4Binding);
+        SetOptionByName(RecRef, FinishingType.FieldNo("CIP4 BindingSide"), Cip4Side);
+        RecRef.Modify(false);
     end;
 }

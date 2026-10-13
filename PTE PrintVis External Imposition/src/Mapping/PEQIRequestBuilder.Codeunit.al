@@ -21,7 +21,7 @@ codeunit 50535 "PEQI Request Builder"
         JsonHelper: Codeunit "PEQI Json Helper";
         EnumNames: Codeunit "PEQI Enum Names";
         Validator: Codeunit "PEQI Request Validator";
-        NoBindingErr: Label 'Finishing code %1 on job %2/%3/%4 has no imposition binding mapping. Add it on the Imposition Binding Mappings page.', Comment = '%1 finishing code, %2 case, %3 job, %4 version';
+        NoFinishingTypeErr: Label 'Finishing code %1 on job %2/%3/%4 has no finishing type in PrintVis.', Comment = '%1 finishing code, %2 case, %3 job, %4 version';
         NoJobErr: Label 'Job %1/%2/%3 does not exist.', Comment = '%1 case, %2 job, %3 version';
         ValidationErr: Label 'This job cannot be sent for imposition yet:\%1', Comment = '%1 newline-separated list of problems';
 
@@ -38,7 +38,7 @@ codeunit 50535 "PEQI Request Builder"
     procedure BuildObject(CaseId: Integer; JobNo: Integer; VersionNo: Integer) RequestObject: JsonObject
     var
         PVSJob: Record "PVS Job";
-        BindingMapping: Record "PEQI Binding Mapping";
+        FinishingType: Record "PVS Finishing Types";
         Setup: Record "PEQI Imposition Setup";
         FinishingCode: Code[20];
         Problem: Text;
@@ -47,14 +47,15 @@ codeunit 50535 "PEQI Request Builder"
             Error(NoJobErr, CaseId, JobNo, VersionNo);
         if not Validator.ResolveFinishing(CaseId, JobNo, VersionNo, FinishingCode, Problem) then
             Error(ValidationErr, Problem);
-        if not BindingMapping.Get(FinishingCode) then
-            Error(NoBindingErr, FinishingCode, CaseId, JobNo, VersionNo);
+        if not FinishingType.Get(FinishingCode) then
+            Error(NoFinishingTypeErr, FinishingCode, CaseId, JobNo, VersionNo);
         Setup := Setup.GetSetup();
         ValidateOrError(CaseId, JobNo, VersionNo);
 
         RequestObject.Add('parts', PartMapper.BuildParts(CaseId, JobNo, VersionNo));
-        JsonHelper.AddText(RequestObject, 'binding', EnumNames.Binding(BindingMapping.Binding));
-        JsonHelper.AddText(RequestObject, 'bindingSide', EnumNames.BindingSide(BindingSide(CaseId, JobNo, VersionNo, BindingMapping)));
+        JsonHelper.AddText(RequestObject, 'binding',
+            EnumNames.BindingFromCip4(EnumNames.OptionMemberName(FinishingType, FinishingType.FieldNo("CIP4 Binding")), FinishingCode));
+        JsonHelper.AddText(RequestObject, 'bindingSide', BindingSide(CaseId, JobNo, VersionNo, FinishingType));
         JsonHelper.AddIntegerIfSet(RequestObject, 'amount', PVSJob.Quantity);
         JsonHelper.AddText(RequestObject, 'grainPolicy', EnumNames.GrainPolicy(Setup."Grain Policy"));
         JsonHelper.AddInteger(RequestObject, 'maxSolutions', Setup."Max Solutions");
@@ -124,31 +125,32 @@ codeunit 50535 "PEQI Request Builder"
         Error(ValidationErr, Combined.ToText());
     end;
 
-    /// <summary>The spine side the job's own imposition code states, falling back to
-    /// the binding mapping's default.</summary>
-    local procedure BindingSide(CaseId: Integer; JobNo: Integer; VersionNo: Integer; BindingMapping: Record "PEQI Binding Mapping"): Enum "PEQI Binding Side"
+    /// <summary>The spine side: the job's own imposition code first, then the finishing type's
+    /// CIP4 BindingSide, then Left.</summary>
+    local procedure BindingSide(CaseId: Integer; JobNo: Integer; VersionNo: Integer; FinishingType: Record "PVS Finishing Types"): Text
     var
         JobItem: Record "PVS Job Item";
         ImpositionCode: Record "PVS Imposition Code";
+        FromFinishing: Text;
     begin
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
         JobItem.SetRange(Version, VersionNo);
-        // "Active" is deliberately not filtered on. PrintVis leaves it false on job items that
-        // are plainly going to print, so filtering on it returned nothing at all and the job
-        // looked empty. Every job item of the version is taken instead.
+        // "Active" is deliberately not filtered on: PrintVis leaves it false on rows that print.
         JobItem.SetFilter("Imposition Type", '<>%1', '');
         if JobItem.FindFirst() then
             if ImpositionCode.Get(JobItem."Imposition Type") then
-                // PVS Imposition Code."Spine Side" is Left,Right only. Top and
-                // Bottom binding remain reachable through the binding mapping's
-                // default, which is the only place they can come from.
+                // PVS Imposition Code."Spine Side" is Left,Right only.
                 case ImpositionCode."Spine Side" of
                     ImpositionCode."Spine Side"::Left:
-                        exit("PEQI Binding Side"::Left);
+                        exit('Left');
                     ImpositionCode."Spine Side"::Right:
-                        exit("PEQI Binding Side"::Right);
+                        exit('Right');
                 end;
-        exit(BindingMapping."Default Binding Side");
+
+        FromFinishing := EnumNames.BindingSideFromCip4(EnumNames.OptionMemberName(FinishingType, FinishingType.FieldNo("CIP4 BindingSide")));
+        if FromFinishing <> '' then
+            exit(FromFinishing);
+        exit('Left');
     end;
 }

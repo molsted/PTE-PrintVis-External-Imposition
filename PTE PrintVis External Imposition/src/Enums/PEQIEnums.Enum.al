@@ -36,25 +36,6 @@ enum 50553 "PEQI Press Edge"
     value(4; Right) { Caption = 'Right'; }
 }
 
-enum 50555 "PEQI Binding Type"
-{
-    Extensible = false;
-    value(0; None) { Caption = 'None'; }
-    value(1; SaddleStitch) { Caption = 'Saddle stitch'; }
-    value(2; PerfectBound) { Caption = 'Perfect bound'; }
-    value(3; SideStitch) { Caption = 'Side stitch'; }
-    value(4; WireO) { Caption = 'Wire-O'; }
-}
-
-enum 50556 "PEQI Binding Side"
-{
-    Extensible = false;
-    value(0; Left) { Caption = 'Left'; }
-    value(1; Right) { Caption = 'Right'; }
-    value(2; Top) { Caption = 'Top'; }
-    value(3; Bottom) { Caption = 'Bottom'; }
-}
-
 enum 50559 "PEQI Grain Policy"
 {
     Extensible = false;

@@ -116,12 +116,9 @@ codeunit 50611 "PEQI Validator Tests"
     procedure AJobWhoseSheetsCarryAMappedFinishingPasses()
     var
         Problems: List of [Text];
-        BindingMapping: Record "PEQI Binding Mapping";
     begin
         // [GIVEN] a job with no finishing of its own, whose sheet says SS, and SS is mapped
-        BindingMapping.Init();
-        BindingMapping."Finishing Code" := 'SS';
-        BindingMapping.Insert(true);
+        TestData.AddFinishingType('SS', 'SaddleStitch', '');
         TestData.AddJob(7101, 1, 1, '', 1000);
         TestData.AddJobSheet(7101, 1, 1, 710101, 'SS');
 

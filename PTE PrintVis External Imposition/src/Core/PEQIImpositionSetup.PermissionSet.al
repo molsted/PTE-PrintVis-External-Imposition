@@ -18,6 +18,5 @@ permissionset 50581 "PEQI Imp. Setup"
     Assignable = true;
     IncludedPermissionSets = "PEQI Imposition";
     Permissions =
-        tabledata "PEQI Imposition Setup" = RIMD,
-        tabledata "PEQI Binding Mapping" = RIMD;
+        tabledata "PEQI Imposition Setup" = RIMD;
 }
