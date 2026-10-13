@@ -54,26 +54,40 @@ codeunit 50565 "PEQI Job Sheet Reader"
                     Referenced.Add(JobItem."Sheet ID");
             until JobItem.Next() = 0;
 
-        // Ascending Sheet ID, so the lowest of each group is met first and the order the
-        // substrates are sent in is the same on every build.
-        JobSheet.SetCurrentKey("Sheet ID");
-        JobSheet.SetRange(ID, CaseId);
-        JobSheet.SetRange(Job, JobNo);
-        JobSheet.SetRange(Version, VersionNo);
-        if JobSheet.FindSet() then
-            repeat
-                if Referenced.Contains(JobSheet."Sheet ID") then begin
-                    GroupKey := GroupKeyOf(JobSheet);
-                    KeyOfSheet.Add(JobSheet."Sheet ID", GroupKey);
-                    if not LowestOfKey.ContainsKey(GroupKey) then begin
-                        LowestOfKey.Add(GroupKey, JobSheet."Sheet ID");
-                        Substrates.Add(JobSheet."Sheet ID");
-                    end;
+        // The ids are sorted, then each sheet is looked up by its primary key, so the lowest of
+        // each group is met first and the order the substrates are sent in is the same on every
+        // build. By key and not filtered by job: a job item can point at a sheet the job does
+        // not own, the validator accepts it by key, and the reader must not drop it. An id whose
+        // sheet is missing is skipped; the validator already reports it.
+        SortAscending(Referenced);
+        foreach SheetId in Referenced do
+            if JobSheet.Get(SheetId) then begin
+                GroupKey := GroupKeyOf(JobSheet);
+                KeyOfSheet.Add(SheetId, GroupKey);
+                if not LowestOfKey.ContainsKey(GroupKey) then begin
+                    LowestOfKey.Add(GroupKey, SheetId);
+                    Substrates.Add(SheetId);
                 end;
-            until JobSheet.Next() = 0;
+            end;
 
         foreach SheetId in KeyOfSheet.Keys() do
             SubstrateOfSheet.Add(SheetId, LowestOfKey.Get(KeyOfSheet.Get(SheetId)));
+    end;
+
+    /// <summary>Insertion sort: AL's List has no sort, and a job holds a handful of sheets.</summary>
+    local procedure SortAscending(var Ids: List of [Integer])
+    var
+        Sorted: List of [Integer];
+        Id: Integer;
+        Position: Integer;
+    begin
+        foreach Id in Ids do begin
+            Position := 1;
+            while (Position <= Sorted.Count()) and (Sorted.Get(Position) < Id) do
+                Position += 1;
+            Sorted.Insert(Position, Id);
+        end;
+        Ids := Sorted;
     end;
 
     /// <summary>The substrate a sheet belongs to; 0 for a sheet that was not loaded.</summary>

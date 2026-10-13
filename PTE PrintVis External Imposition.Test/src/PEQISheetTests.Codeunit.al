@@ -168,6 +168,32 @@ codeunit 50617 "PEQI Sheet Tests"
         Assert.AreEqual(Units.FormatToMm(450), FirstDecimal(Sheets, 'heightMm'), 'The shorter edge is the height');
     end;
 
+    [Test]
+    procedure SubstratesAreSentInAscendingOrderOfTheirLowestSheet()
+    var
+        Sheets: JsonArray;
+        Token: JsonToken;
+    begin
+        // [GIVEN] two papers whose job items interleave: A, B, A
+        TestData.AddPaperItem('PAPER-A', 'Paper A');
+        TestData.AddPaperItem('PAPER-B', 'Paper B');
+        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
+        TestData.AddJobItem(8008, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
+        TestData.AddJobItem(8008, 1, 1, 2, 'COVER', 4, 430, 297, 'PAPER-B');
+        TestData.AddJobItem(8008, 1, 1, 3, 'BODY', 16, 210, 297, 'PAPER-A');
+
+        // [WHEN] the sheets half is built
+        Sheets := CatalogMapper.BuildSheets(8008, 1, 1);
+
+        // [THEN] two substrates, A's (lowest sheet 1) before B's (sheet 2) -- the same order on every build
+        Assert.AreEqual(2, Sheets.Count(), 'Two papers are two substrates');
+        Sheets.Get(0, Token);
+        Assert.AreEqual(TestData.SheetIdFor(8008, 1), JsonHelper.ReadInteger(Token.AsObject(), 'id'), 'Paper A comes first');
+        Sheets.Get(1, Token);
+        Assert.AreEqual(TestData.SheetIdFor(8008, 2), JsonHelper.ReadInteger(Token.AsObject(), 'id'), 'Paper B comes second');
+    end;
+
     local procedure FirstObject(Sheets: JsonArray): JsonObject
     var
         Token: JsonToken;
