@@ -11,6 +11,7 @@
 namespace PrintersEquity.ExternalImposition.Tests;
 
 using PrintersEquity.ExternalImposition.Document;
+using PrintersEquity.ExternalImposition.Mapping;
 using System.TestLibraries.Utilities;
 
 codeunit 50615 "PEQI Document Tests"
@@ -60,5 +61,27 @@ codeunit 50615 "PEQI Document Tests"
 
         // [THEN] it is byte-identical
         Assert.AreEqual(Written, ImpositionJob.GetRequestJson(), 'Request JSON round-trips');
+    end;
+
+    [Test]
+    procedure TheSeedStatesWhatTheOperatorMayDo()
+    var
+        RequestBuilder: Codeunit "PEQI Request Builder";
+        Options: JsonObject;
+        Token: JsonToken;
+        Mode: Text;
+    begin
+        // [WHEN] the seed options are built for an entry
+        Options.ReadFrom(RequestBuilder.SeedOptions('4711-1-1-1'));
+
+        // [THEN] they name a mode, and it is one of the two the editor knows
+        Assert.IsTrue(Options.Get('mode', Token), 'The seed states a mode');
+        Mode := Token.AsValue().AsText();
+        Assert.IsTrue((Mode = 'approve') or (Mode = 'advanced'),
+                      'The mode is one the editor knows, not ' + Mode);
+
+        // [THEN] and the entry key still rides along, because the editor echoes it back
+        Assert.IsTrue(Options.Get('entryKey', Token), 'The seed carries the entry key');
+        Assert.AreEqual('4711-1-1-1', Token.AsValue().AsText(), 'The entry key is unchanged');
     end;
 }

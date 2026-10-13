@@ -69,6 +69,40 @@ codeunit 50535 "PEQI Request Builder"
         // impositionRules is deliberately absent - see the design, section 6.5.
     end;
 
+    /// <summary>What the editor is told about the session it is being handed.</summary>
+    /// <remarks>
+    /// <para>
+    /// Lives here rather than on the page because a page's local procedure cannot be tested, and
+    /// this one decides what an operator is allowed to do.
+    /// </para>
+    /// <para>
+    /// <b>The mode is read off the permission sets themselves.</b> "PEQI Paper Setup" is R in
+    /// "PEQI Imposition" and RIMD in "PEQI Imp. Setup", so write access to it is exactly the
+    /// difference between the two, and this cannot drift from them the way a separate flag or a
+    /// third permission set would.
+    /// </para>
+    /// </remarks>
+    procedure SeedOptions(EntryKey: Text): Text
+    var
+        PaperSetup: Record "PEQI Paper Setup";
+        Options: JsonObject;
+        OptionsText: Text;
+    begin
+        // The product comes from the case, not from the operator typing it.
+        Options.Add('readonlyProduct', true);
+        Options.Add('startRoute', 'layout');
+        // Echoed back on every result, and checked before anything is stored.
+        Options.Add('entryKey', EntryKey);
+
+        if PaperSetup.WritePermission() then
+            Options.Add('mode', 'advanced')
+        else
+            Options.Add('mode', 'approve');
+
+        Options.WriteTo(OptionsText);
+        exit(OptionsText);
+    end;
+
     local procedure ValidateOrError(CaseId: Integer; JobNo: Integer; VersionNo: Integer)
     var
         Problems: List of [Text];

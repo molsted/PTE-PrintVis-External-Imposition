@@ -11,6 +11,7 @@
 namespace PrintersEquity.ExternalImposition.Document;
 
 using PrintersEquity.ExternalImposition.Commit;
+using PrintersEquity.ExternalImposition.Mapping;
 using PrintersEquity.ExternalImposition.Setup;
 using PrintersEquity.ExternalImposition.Studio;
 
@@ -66,6 +67,7 @@ page 50517 "PEQI Imposition Job Card"
                     trigger ControlReady()
                     var
                         Setup: Record "PEQI Imposition Setup";
+                        RequestBuilder: Codeunit "PEQI Request Builder";
                     begin
                         Setup := Setup.GetSetup();
                         if Setup."Spa Url" = '' then begin
@@ -73,7 +75,7 @@ page 50517 "PEQI Imposition Job Card"
                             CurrPage.Update(false);
                             exit;
                         end;
-                        CurrPage.Studio.LoadEditor(Setup."Spa Url", Rec.GetRequestJson(), SeedOptions());
+                        CurrPage.Studio.LoadEditor(Setup."Spa Url", Rec.GetRequestJson(), RequestBuilder.SeedOptions(Rec.EntryKey()));
                     end;
 
                     trigger SolutionChosen(ResultJson: Text)
@@ -215,19 +217,5 @@ page 50517 "PEQI Imposition Job Card"
         EditorVisible := Rec.Status in [Rec.Status::Draft, Rec.Status::Solved];
         HasError := Rec."Last Error" <> '';
         CanGenerate := Rec.Status = Rec.Status::Solved;
-    end;
-
-    local procedure SeedOptions(): Text
-    var
-        Options: JsonObject;
-        OptionsText: Text;
-    begin
-        // The product comes from the case, not from the operator typing it.
-        Options.Add('readonlyProduct', true);
-        Options.Add('startRoute', 'layout');
-        // Echoed back on every result, and checked before anything is stored.
-        Options.Add('entryKey', Rec.EntryKey());
-        Options.WriteTo(OptionsText);
-        exit(OptionsText);
     end;
 }
