@@ -21,7 +21,7 @@ codeunit 50536 "PEQI Part Mapper"
         SheetReader: Codeunit "PEQI Job Sheet Reader";
         NoComponentTypeErr: Label 'Component type %1 does not exist in PrintVis.', Comment = '%1 component type';
         NoProductTypeErr: Label 'Component type %1 has no JDF Product Type. Set it on the component type card.', Comment = '%1 component type';
-        PaperClashErr: Label 'Component %1 spans two sheets: job item %2 runs on %3 and job item %4 runs on %5, at a different paper or printing format. A part is imposed on one stock.', Comment = '%1 component, %2 %4 job item nos, %3 %5 paper item nos';
+        PaperClashErr: Label 'Component %1 spans two sheets: sheet %2 (%3, %4 x %5) and sheet %6 (%7, %8 x %9). A part is imposed on one stock, so put its job items on one paper at one printing format.', Comment = '%1 component, %2 %6 sheet ids, %3 %7 paper item nos, %4 %5 %8 %9 Length and Width';
         FormatClashErr: Label 'Component %1 spans two trim formats: job item %2 is %3 x %4 and job item %5 is %6 x %7.', Comment = '%1 component, %2 %5 job item nos, %3 %4 %6 %7 dimensions';
         NoComponentsErr: Label 'Job %1/%2/%3 has no job items, so there is nothing to impose.', Comment = '%1 case, %2 job, %3 version';
 
@@ -72,6 +72,8 @@ codeunit 50536 "PEQI Part Mapper"
         JobItem: Record "PVS Job Item";
         ComponentTypeRec: Record "PVS Component Types";
         FirstItem: Record "PVS Job Item";
+        FirstSheet: Record "PVS Job Sheet";
+        ItemSheet: Record "PVS Job Sheet";
         Setup: Record "PEQI Imposition Setup";
         ProductType: Text;
         FirstSubstrate: Integer;
@@ -107,10 +109,16 @@ codeunit 50536 "PEQI Part Mapper"
             // so a sibling on a different paper -- or the same paper at a different printing
             // format -- would be imposed on a sheet nobody chose for it.
             ItemSubstrate := SheetReader.SubstrateIdOf(JobItem."Sheet ID");
-            if ItemSubstrate <> FirstSubstrate then
+            if ItemSubstrate <> FirstSubstrate then begin
+                // A sheet that cannot be read is shown blank; the validator reports it by id.
+                if not FirstSheet.Get(FirstItem."Sheet ID") then
+                    Clear(FirstSheet);
+                if not ItemSheet.Get(JobItem."Sheet ID") then
+                    Clear(ItemSheet);
                 Error(PaperClashErr, ComponentType,
-                      FirstItem."Job Item No.", PaperItemNo(FirstItem),
-                      JobItem."Job Item No.", PaperItemNo(JobItem));
+                      FirstItem."Sheet ID", FirstSheet."Paper Item No.", FirstSheet.Length, FirstSheet.Width,
+                      JobItem."Sheet ID", ItemSheet."Paper Item No.", ItemSheet.Length, ItemSheet.Width);
+            end;
             TotalPages += JobItem."No. Of Pages";
             if JobItem."Colors Front" > FrontColors then
                 FrontColors := JobItem."Colors Front";

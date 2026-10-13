@@ -52,7 +52,7 @@ codeunit 50610 "PEQI Builder Tests"
         Assert.AreEqual(32, JsonHelper.ReadInteger(Part, 'pageCount'), 'Pages are summed');
         Assert.AreEqual(210.0, JsonHelper.ReadDecimal(Part, 'trimWidthMm'), 'Width is the trim width');
         Assert.AreEqual(297.0, JsonHelper.ReadDecimal(Part, 'trimHeightMm'), 'Length is the trim height');
-        Assert.AreEqual('Body', JsonHelper.ReadText(Part, 'productType'), 'Product type comes from the part mapping');
+        Assert.AreEqual('Body', JsonHelper.ReadText(Part, 'productType'), 'Product type comes from the component type');
         Assert.AreEqual('ParallelToSpine', JsonHelper.ReadText(Part, 'grainRule'), 'Grain rule is the engine spelling, not the caption');
     end;
 
@@ -170,8 +170,8 @@ codeunit 50610 "PEQI Builder Tests"
         Ids := IdToken.AsArray();
         Ids.Get(0, IdToken);
 
-        // [THEN] it names the paper by its integer surrogate, not its item number
-        Assert.AreEqual(SubstrateId, IdToken.AsValue().AsInteger(), 'A part selects on the substrate surrogate id');
+        // [THEN] it names the paper by its Sheet ID, not its item number
+        Assert.AreEqual(SubstrateId, IdToken.AsValue().AsInteger(), 'A part selects on the substrate Sheet ID');
     end;
 
     [Test]

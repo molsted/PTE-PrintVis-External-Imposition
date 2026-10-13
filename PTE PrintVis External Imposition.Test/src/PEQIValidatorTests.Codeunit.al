@@ -47,6 +47,26 @@ codeunit 50611 "PEQI Validator Tests"
         Assert.IsTrue(ProblemsMention(Problems, 'UNMAPPED-B'), 'The second unmapped component is reported too');
     end;
 
+    [Test]
+    procedure AComponentOnOnePaperAtTwoFormatsIsReportedWithBothSheets()
+    var
+        Problems: List of [Text];
+    begin
+        // [GIVEN] one component whose two job items are on the same paper at two printing formats
+        TestData.AddPaperItem('PAPER-A', 'Paper A');
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
+        TestData.AddJobItem(7111, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
+        TestData.AddJobItem(7111, 1, 1, 2, 'BODY', 16, 210, 297, 'PAPER-A');
+        TestData.SetSheetFormat(7111, 2, 720, 520);
+
+        // [WHEN] the job is validated
+        Validator.Validate(7111, 1, 1, Problems);
+
+        // [THEN] both sheets are named, so the planner knows which to change
+        Assert.IsTrue(ProblemsMention(Problems, Format(TestData.SheetIdFor(7111, 1))), 'The first sheet is named');
+        Assert.IsTrue(ProblemsMention(Problems, Format(TestData.SheetIdFor(7111, 2))), 'The second sheet is named');
+    end;
+
     local procedure ProblemsMention(Problems: List of [Text]; Needle: Text): Boolean
     var
         Problem: Text;

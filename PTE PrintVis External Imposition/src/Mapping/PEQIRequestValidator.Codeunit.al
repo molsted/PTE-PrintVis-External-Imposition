@@ -30,6 +30,8 @@ codeunit 50538 "PEQI Request Validator"
         NoPressMsg: Label 'No cost center configuration is marked Use for Imposition.', Locked = false;
         NoPressFormatMsg: Label 'Press %1 %2 is marked for imposition but its configuration has no maximum printing format.', Comment = '%1 cost centre, %2 configuration';
         NoPressIdMsg: Label 'Press %1 %2 is marked for imposition but has no press id. Untick and tick Use for Imposition to assign one.', Comment = '%1 cost centre, %2 configuration';
+        SheetClashMsg: Label 'Component %1 spans two sheets: sheet %2 (%3, %4 x %5) and sheet %6 (%7, %8 x %9). A part is imposed on one stock, so put its job items on one paper at one printing format.', Comment = '%1 component, %2 %6 sheet ids, %3 %7 paper item nos, %4 %5 %8 %9 Length and Width';
+        BottomBindingMsg: Label 'Finishing type %1 is bound at the bottom edge, which the engine does not impose. It binds left, right or top.', Comment = '%1 finishing code';
         SharedPressIdMsg: Label 'Press %1 %2 shares its press id with another configuration, probably because it was copied. Untick and tick Use for Imposition to give it its own.', Comment = '%1 cost centre, %2 configuration';
 
     /// <summary>Collects every problem rather than stopping at the first, so an
@@ -64,6 +66,9 @@ codeunit 50538 "PEQI Request Validator"
                     EnumNames.OptionMemberName(FinishingType, FinishingType.FieldNo("CIP4 Binding")), FinishingCode);
                 if Cip4Problem <> '' then
                     Problems.Add(Cip4Problem);
+                // Refused here, where the planner is told, and not mid-build by BindingSideFromCip4.
+                if EnumNames.OptionMemberName(FinishingType, FinishingType.FieldNo("CIP4 BindingSide")) = 'Bottom' then
+                    Problems.Add(StrSubstNo(BottomBindingMsg, FinishingCode));
             end;
     end;
 
@@ -120,9 +125,13 @@ codeunit 50538 "PEQI Request Validator"
         JobItem: Record "PVS Job Item";
         ComponentTypeRec: Record "PVS Component Types";
         JobSheet: Record "PVS Job Sheet";
+        FirstSheet: Record "PVS Job Sheet";
         Item: Record Item;
         EnumNames: Codeunit "PEQI Enum Names";
+        Reader: Codeunit "PEQI Job Sheet Reader";
         Seen: List of [Code[20]];
+        ClashReported: List of [Code[20]];
+        FirstSheetId: Dictionary of [Code[20], Integer];
         ComponentType: Code[20];
     begin
         JobItem.SetRange(ID, CaseId);
@@ -133,6 +142,10 @@ codeunit 50538 "PEQI Request Validator"
         // looked empty. Every job item of the version is taken instead.
         if not JobItem.FindSet() then
             exit;
+
+        // The sheet groups, so a component whose job items fall in two of them is found here and
+        // not mid-build, where the mapper would refuse it.
+        Reader.Load(CaseId, JobNo, VersionNo);
 
         repeat
             ComponentType := JobItem."Component Type";
@@ -160,6 +173,21 @@ codeunit 50538 "PEQI Request Validator"
                         Problems.Add(StrSubstNo(MissingPaperItemMsg, JobSheet."Sheet ID", ComponentType, JobSheet."Paper Item No."));
                 if (JobSheet.Length = 0) or (JobSheet.Width = 0) then
                     Problems.Add(StrSubstNo(NoSheetFormatMsg, JobSheet."Sheet ID", ComponentType));
+
+                // One part is imposed on one sheet group. Each component is compared with the
+                // sheet group of its first job item, and a clash is reported once per component.
+                if not FirstSheetId.ContainsKey(ComponentType) then
+                    FirstSheetId.Add(ComponentType, JobSheet."Sheet ID")
+                else
+                    if not ClashReported.Contains(ComponentType) then
+                        if (Reader.SubstrateIdOf(FirstSheetId.Get(ComponentType)) <> 0) and (Reader.SubstrateIdOf(JobSheet."Sheet ID") <> 0)
+                           and (Reader.SubstrateIdOf(FirstSheetId.Get(ComponentType)) <> Reader.SubstrateIdOf(JobSheet."Sheet ID")) then
+                            if FirstSheet.Get(FirstSheetId.Get(ComponentType)) then begin
+                                ClashReported.Add(ComponentType);
+                                Problems.Add(StrSubstNo(SheetClashMsg, ComponentType,
+                                    FirstSheet."Sheet ID", FirstSheet."Paper Item No.", FirstSheet.Length, FirstSheet.Width,
+                                    JobSheet."Sheet ID", JobSheet."Paper Item No.", JobSheet.Length, JobSheet.Width));
+                            end;
             end;
         until JobItem.Next() = 0;
     end;
@@ -179,7 +207,7 @@ codeunit 50538 "PEQI Request Validator"
             if IsNullGuid(Config."PEQI Press Id") then
                 Problems.Add(StrSubstNo(NoPressIdMsg, Config."Cost Center Code", Config.Configuration))
             else
-                if Config.PEQIPressIdHeldByAnother() then
+                if Config.PEQIPressIdHeldByAnother(true) then
                     Problems.Add(StrSubstNo(SharedPressIdMsg, Config."Cost Center Code", Config.Configuration));
         until Config.Next() = 0;
     end;

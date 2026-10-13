@@ -38,7 +38,7 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
             begin
                 // Assigned once and never regenerated -- the engine's solutionId hashes it -- unless
                 // it is missing, or this row was copied from another and so carries that press's id.
-                if "PEQI Use for Imposition" and (IsNullGuid("PEQI Press Id") or PEQIPressIdHeldByAnother()) then
+                if "PEQI Use for Imposition" and (IsNullGuid("PEQI Press Id") or PEQIPressIdHeldByAnother(false)) then
                     "PEQI Press Id" := CreateGuid();
             end;
         }
@@ -71,14 +71,18 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
         field(50522; "PEQI Model"; Text[100]) { Caption = 'Model'; DataClassification = CustomerContent; }
     }
 
-    /// <summary>Whether another configuration already carries this row's press id.</summary>
-    procedure PEQIPressIdHeldByAnother(): Boolean
+    /// <summary>Whether another configuration already carries this row's press id. MarkedOnly
+    /// counts only configurations marked for imposition -- the ones that are sent, so the only
+    /// ones that can clash. Assigning a fresh id counts every row, marked or not.</summary>
+    procedure PEQIPressIdHeldByAnother(MarkedOnly: Boolean): Boolean
     var
         Other: Record "PVS Cost Center Configuration";
     begin
         if IsNullGuid("PEQI Press Id") then
             exit(false);
         Other.SetRange("PEQI Press Id", "PEQI Press Id");
+        if MarkedOnly then
+            Other.SetRange("PEQI Use for Imposition", true);
         Other.SetFilter("Cost Center Code", '<>%1', "Cost Center Code");
         if not Other.IsEmpty() then
             exit(true);

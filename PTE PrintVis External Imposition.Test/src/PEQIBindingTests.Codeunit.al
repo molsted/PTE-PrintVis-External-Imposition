@@ -25,6 +25,7 @@ codeunit 50620 "PEQI Binding Tests"
         RequestBuilder: Codeunit "PEQI Request Builder";
         EnumNames: Codeunit "PEQI Enum Names";
         JsonHelper: Codeunit "PEQI Json Helper";
+        Validator: Codeunit "PEQI Request Validator";
 
     [Test]
     procedure Cip4BindingsTranslateToTheEngines()
@@ -147,6 +148,54 @@ codeunit 50620 "PEQI Binding Tests"
         RequestObject := RequestBuilder.BuildObject(6207, 1, 1);
 
         Assert.AreEqual('Left', JsonHelper.ReadText(RequestObject, 'bindingSide'), 'No side recorded anywhere is Left');
+    end;
+
+    [Test]
+    procedure TheImpositionCodesSpineSideWins()
+    var
+        ImpositionCode: Record "PVS Imposition Code";
+        JobItem: Record "PVS Job Item";
+        RequestObject: JsonObject;
+    begin
+        // [GIVEN] a finishing type bound at the top, and the job's imposition code stating a right spine
+        AddBuildableJob(6209, 'TOPBOUND2');
+        TestData.AddFinishingType('TOPBOUND2', 'SaddleStitch', 'Top');
+        ImpositionCode.Init();
+        ImpositionCode.Code := 'IMP-RIGHT';
+        ImpositionCode."Spine Side" := ImpositionCode."Spine Side"::Right;
+        ImpositionCode.Insert(false);
+        JobItem.SetRange(ID, 6209);
+        JobItem.FindFirst();
+        JobItem."Imposition Type" := 'IMP-RIGHT';
+        JobItem.Modify(false);
+
+        RequestObject := RequestBuilder.BuildObject(6209, 1, 1);
+
+        // [THEN] the imposition code decides
+        Assert.AreEqual('Right', JsonHelper.ReadText(RequestObject, 'bindingSide'), 'The imposition code''s spine side wins');
+    end;
+
+    [Test]
+    procedure ABottomBindingSideIsReportedByTheValidator()
+    var
+        Problems: List of [Text];
+    begin
+        AddBuildableJob(6208, 'FOOTBOUND');
+        TestData.AddFinishingType('FOOTBOUND', 'SaddleStitch', 'Bottom');
+
+        Validator.Validate(6208, 1, 1, Problems);
+
+        Assert.IsTrue(ProblemsMention(Problems, 'FOOTBOUND'), 'The finishing type is named');
+    end;
+
+    local procedure ProblemsMention(Problems: List of [Text]; Needle: Text): Boolean
+    var
+        Problem: Text;
+    begin
+        foreach Problem in Problems do
+            if StrPos(Problem, Needle) > 0 then
+                exit(true);
+        exit(false);
     end;
 
     local procedure AddBuildableJob(CaseId: Integer; FinishingCode: Code[20])

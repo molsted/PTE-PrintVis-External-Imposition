@@ -11,9 +11,10 @@ cannot provide.
 
 ## How to take it
 
-1. Deploy the extension to a sandbox with a representative catalogue — every
-   paper and press a real shop would mark `Use for Imposition`. A catalogue of
-   two rows proves nothing; the whole point is the size a real shop produces.
+1. Deploy the extension to a sandbox with a representative setup: a real job with
+   all its sheets, and every cost center configuration a real shop would mark
+   `Use for Imposition`. A job with one sheet and one press proves nothing; the
+   whole point is the size a real shop produces.
 2. Open a real job's **PVS Job Card** → **External Imposition** → **Solve Imposition**.
 3. On the Imposition Job card, run **Measure Request Size**.
 4. Fill the table below and set the verdict.
@@ -22,8 +23,8 @@ cannot provide.
 |---|---|
 | Date | *(not taken)* |
 | Environment | *(not taken)* |
-| Marked paper rows | *(not taken)* |
-| Marked press rows | *(not taken)* |
+| Job sheets in the request | *(not taken)* |
+| Marked cost center configurations | *(not taken)* |
 | Request size | *(not taken)* |
 
 **Verdict:** *(pending)* — fits in one add-in argument / needs a chunked seed

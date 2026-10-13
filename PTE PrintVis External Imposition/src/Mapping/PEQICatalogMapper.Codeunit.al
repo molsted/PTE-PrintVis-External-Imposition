@@ -150,6 +150,8 @@ codeunit 50537 "PEQI Catalog Mapper"
         Config: Record "PVS Cost Center Configuration";
         Press: JsonObject;
         SideLay: Text;
+        MinGsm: Integer;
+        MaxGsm: Integer;
     begin
         Config.SetRange("PEQI Use for Imposition", true);
         if not Config.FindSet() then
@@ -196,10 +198,16 @@ codeunit 50537 "PEQI Catalog Mapper"
 
             // PrintVis records the weights a press takes; read, not re-entered. A basis-less weight
             // unit is quoted over the press's own maximum sheet.
-            JsonHelper.AddIntegerIfSet(Press, 'minGrammageGsm', Round(Units.WeightToGsm(Config."Min Weight", Config."Weight Unit",
-                Config."Max Printing Format Width", Config."Max Printing Format Length"), 1, '='));
-            JsonHelper.AddIntegerIfSet(Press, 'maxGrammageGsm', Round(Units.WeightToGsm(Config."Max Weight", Config."Weight Unit",
-                Config."Max Printing Format Width", Config."Max Printing Format Length"), 1, '='));
+            // The engine refuses anything above 5000 gsm, and a press whose limit is a placeholder
+            // (a sentinel Max Weight, say) should not fail every solve, so such a limit is not sent.
+            MinGsm := Round(Units.WeightToGsm(Config."Min Weight", Config."Weight Unit",
+                Config."Max Printing Format Width", Config."Max Printing Format Length"), 1, '=');
+            if (MinGsm > 0) and (MinGsm <= 5000) then
+                JsonHelper.AddInteger(Press, 'minGrammageGsm', MinGsm);
+            MaxGsm := Round(Units.WeightToGsm(Config."Max Weight", Config."Weight Unit",
+                Config."Max Printing Format Width", Config."Max Printing Format Length"), 1, '=');
+            if (MaxGsm > 0) and (MaxGsm <= 5000) then
+                JsonHelper.AddInteger(Press, 'maxGrammageGsm', MaxGsm);
 
             JsonHelper.AddText(Press, 'plateName', Config."Plate No.");
             JsonHelper.AddDecimalIfSet(Press, 'plateWidthMm', Units.FormatToMm(Config."Plate Width"));
