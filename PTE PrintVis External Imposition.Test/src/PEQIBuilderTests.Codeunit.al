@@ -37,7 +37,7 @@ codeunit 50610 "PEQI Builder Tests"
     begin
         // [GIVEN] a body split across two job items, 16 pages each
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPaper('PAPER-100');
+        TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(5001, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-100');
         TestData.AddJobItem(5001, 1, 1, 2, 'BODY', 16, 210, 297, 'PAPER-100');
 
@@ -65,8 +65,8 @@ codeunit 50610 "PEQI Builder Tests"
         // [GIVEN] a cover and a body
         TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPaper('PAPER-240');
-        TestData.AddPaper('PAPER-100');
+        TestData.AddPaperItem('PAPER-240', 'PAPER-240');
+        TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(5002, 1, 1, 1, 'COVER', 4, 148, 210, 'PAPER-240');
         TestData.AddJobItem(5002, 1, 1, 2, 'BODY', 28, 148, 210, 'PAPER-100');
 
@@ -87,10 +87,12 @@ codeunit 50610 "PEQI Builder Tests"
         // [GIVEN] a cover and a body PrintVis has put on different paper
         TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        CoverId := TestData.AddPaper('PAPER-240');
-        BodyId := TestData.AddPaper('PAPER-100');
+        TestData.AddPaperItem('PAPER-240', 'PAPER-240');
+        TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(5004, 1, 1, 1, 'COVER', 4, 148, 210, 'PAPER-240');
         TestData.AddJobItem(5004, 1, 1, 2, 'BODY', 28, 148, 210, 'PAPER-100');
+        CoverId := TestData.SheetIdFor(5004, 1);
+        BodyId := TestData.SheetIdFor(5004, 2);
 
         // [WHEN] the parts are built
         Parts := PartMapper.BuildParts(5004, 1, 1);
@@ -107,8 +109,8 @@ codeunit 50610 "PEQI Builder Tests"
     begin
         // [GIVEN] one component whose two job items sit on different paper
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPaper('PAPER-100');
-        TestData.AddPaper('PAPER-240');
+        TestData.AddPaperItem('PAPER-100', 'PAPER-100');
+        TestData.AddPaperItem('PAPER-240', 'PAPER-240');
         TestData.AddJobItem(5005, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-100');
         TestData.AddJobItem(5005, 1, 1, 2, 'BODY', 16, 210, 297, 'PAPER-240');
 
@@ -156,8 +158,9 @@ codeunit 50610 "PEQI Builder Tests"
     begin
         // [GIVEN] a body on a known paper
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        SubstrateId := TestData.AddPaper('PAPER-115');
+        TestData.AddPaperItem('PAPER-115', 'PAPER-115');
         TestData.AddJobItem(5003, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-115');
+        SubstrateId := TestData.SheetIdFor(5003, 1);
 
         // [WHEN] the parts are built
         Parts := PartMapper.BuildParts(5003, 1, 1);
@@ -170,26 +173,6 @@ codeunit 50610 "PEQI Builder Tests"
 
         // [THEN] it names the paper by its integer surrogate, not its item number
         Assert.AreEqual(SubstrateId, IdToken.AsValue().AsInteger(), 'A part selects on the substrate surrogate id');
-    end;
-
-    [Test]
-    procedure OnlyPaperMarkedForImpositionIsSent()
-    var
-        Sheets: JsonArray;
-        PaperSetup: Record "PEQI Paper Setup";
-    begin
-        // [GIVEN] one paper marked for imposition and one not
-        TestData.AddPaper('PAPER-USED');
-        PaperSetup.Init();
-        PaperSetup."Item No." := 'PAPER-UNUSED';
-        PaperSetup."Use for Imposition" := false;
-        PaperSetup.Insert(true);
-
-        // [WHEN] the sheets half is built
-        Sheets := CatalogMapper.BuildSheets();
-
-        // [THEN] only the marked one is present
-        Assert.AreEqual(1, Sheets.Count(), 'Unmarked paper is not sent');
     end;
 
     [Test]
@@ -261,8 +244,8 @@ codeunit 50610 "PEQI Builder Tests"
         // [GIVEN] a saddle-stitched job with a cover and a body, one paper, one press
         TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPaper('PAPER-240');
-        TestData.AddPaper('PAPER-100');
+        TestData.AddPaperItem('PAPER-240', 'PAPER-240');
+        TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(6001, 1, 1, 1, 'COVER', 4, 148, 210, 'PAPER-240');
         TestData.AddJobItem(6001, 1, 1, 2, 'BODY', 28, 148, 210, 'PAPER-100');
 
@@ -302,7 +285,7 @@ codeunit 50610 "PEQI Builder Tests"
     begin
         // [GIVEN] a job
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPaper('PAPER-90');
+        TestData.AddPaperItem('PAPER-90', 'PAPER-90');
         TestData.AddJobItem(6002, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-90');
         TestData.AddJob(6002, 1, 1, 'SADDLE', 1000);
 
@@ -379,7 +362,7 @@ codeunit 50610 "PEQI Builder Tests"
         PressSetup: Record "PEQI Press Setup";
     begin
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPaper('PAPER-100');
+        TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(CaseId, 1, 1, 1, 'BODY', 32, 148, 210, 'PAPER-100');
         TestData.AddJob(CaseId, 1, 1, FinishingCode, 5000);
 

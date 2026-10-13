@@ -22,11 +22,12 @@ codeunit 50538 "PEQI Request Validator"
         MixedFinishingMsg: Label 'The sheets of job %1/%2/%3 have different finishing codes (%4). Set the finishing on the job to choose one binding.', Comment = '%1 case, %2 job, %3 version, %4 comma-separated finishing codes';
         NoPartMsg: Label 'Component type %1 has no imposition part mapping.', Comment = '%1 component type';
         OddPagesMsg: Label 'Component %1 has %2 pages. A folded part needs an even count.', Comment = '%1 component, %2 page count';
-        NoPaperSetupMsg: Label 'Paper item %1 used by component %2 is not set up for imposition.', Comment = '%1 item no., %2 component';
-        NoPaperFormatMsg: Label 'Paper item %1 is marked for imposition but has no sheet size (PVS Format 1 / 2).', Comment = '%1 item no.';
+        NoSheetMsg: Label 'Job item %1 of component %2 has no sheet in PrintVis.', Comment = '%1 job item no., %2 component';
+        NoSheetPaperMsg: Label 'Sheet %1 of component %2 has no paper item.', Comment = '%1 sheet id, %2 component';
+        MissingPaperItemMsg: Label 'Sheet %1 of component %2 names paper item %3, which does not exist.', Comment = '%1 sheet id, %2 component, %3 item no.';
+        NoSheetFormatMsg: Label 'Sheet %1 of component %2 has no printing format (Length x Width).', Comment = '%1 sheet id, %2 component';
         NoPressMsg: Label 'No press is marked Use for Imposition.', Locked = false;
         NoPressFormatMsg: Label 'Press %1 %2 is marked for imposition but its configuration has no maximum printing format.', Comment = '%1 cost centre, %2 configuration';
-        NoSheetsMsg: Label 'No paper is marked Use for Imposition.', Locked = false;
 
     /// <summary>Collects every problem rather than stopping at the first, so an
     /// operator fixes them in one visit. True when the request may be built.</summary>
@@ -35,7 +36,6 @@ codeunit 50538 "PEQI Request Validator"
         Clear(Problems);
         ValidateJob(CaseId, JobNo, VersionNo, Problems);
         ValidateComponents(CaseId, JobNo, VersionNo, Problems);
-        ValidatePaper(Problems);
         ValidatePresses(Problems);
         exit(Problems.Count() = 0);
     end;
@@ -108,11 +108,10 @@ codeunit 50538 "PEQI Request Validator"
     var
         JobItem: Record "PVS Job Item";
         PartMapping: Record "PEQI Part Mapping";
-        PaperSetup: Record "PEQI Paper Setup";
-        PartMapper: Codeunit "PEQI Part Mapper";
+        JobSheet: Record "PVS Job Sheet";
+        Item: Record Item;
         Pages: Dictionary of [Code[20], Integer];
         ComponentType: Code[20];
-        PaperItemNo: Code[20];
         Total: Integer;
     begin
         JobItem.SetRange(ID, CaseId);
@@ -134,14 +133,19 @@ codeunit 50538 "PEQI Request Validator"
                     Problems.Add(StrSubstNo(NoPartMsg, ComponentType));
             end;
 
-            // Through the mapper, so the validator warns about exactly the paper the request
-            // will pin. It used to read "Item No.", the job item's own item, which is blank on
-            // an ordinary component -- so this check never ran and the operator learnt about an
-            // unregistered paper from a hard error mid-solve instead of from this list.
-            PaperItemNo := PartMapper.PaperItemNo(JobItem);
-            if PaperItemNo <> '' then
-                if not PaperSetup.Get(PaperItemNo, '') then
-                    Problems.Add(StrSubstNo(NoPaperSetupMsg, PaperItemNo, ComponentType));
+            // The sheet the CSR put the job item on. Each failure names the sheet, because the fix
+            // is on that sheet in PrintVis and the planner has to know which one.
+            if (JobItem."Sheet ID" = 0) or not JobSheet.Get(JobItem."Sheet ID") then
+                Problems.Add(StrSubstNo(NoSheetMsg, JobItem."Job Item No.", ComponentType))
+            else begin
+                if JobSheet."Paper Item No." = '' then
+                    Problems.Add(StrSubstNo(NoSheetPaperMsg, JobSheet."Sheet ID", ComponentType))
+                else
+                    if not Item.Get(JobSheet."Paper Item No.") then
+                        Problems.Add(StrSubstNo(MissingPaperItemMsg, JobSheet."Sheet ID", ComponentType, JobSheet."Paper Item No."));
+                if (JobSheet.Length = 0) or (JobSheet.Width = 0) then
+                    Problems.Add(StrSubstNo(NoSheetFormatMsg, JobSheet."Sheet ID", ComponentType));
+            end;
         until JobItem.Next() = 0;
 
         foreach ComponentType in Pages.Keys() do begin
@@ -155,25 +159,6 @@ codeunit 50538 "PEQI Request Validator"
     local procedure IsFolded(ProductType: Enum "PEQI Part Product Type"): Boolean
     begin
         exit(ProductType <> ProductType::Flat);
-    end;
-
-    local procedure ValidatePaper(var Problems: List of [Text])
-    var
-        PaperSetup: Record "PEQI Paper Setup";
-        Item: Record Item;
-    begin
-        PaperSetup.SetRange("Use for Imposition", true);
-        if PaperSetup.IsEmpty() then begin
-            Problems.Add(NoSheetsMsg);
-            exit;
-        end;
-
-        PaperSetup.FindSet();
-        repeat
-            if Item.Get(PaperSetup."Item No.") then
-                if (Item."PVS Format 1" <= 0) or (Item."PVS Format 2" <= 0) then
-                    Problems.Add(StrSubstNo(NoPaperFormatMsg, PaperSetup."Item No."));
-        until PaperSetup.Next() = 0;
     end;
 
     local procedure ValidatePresses(var Problems: List of [Text])

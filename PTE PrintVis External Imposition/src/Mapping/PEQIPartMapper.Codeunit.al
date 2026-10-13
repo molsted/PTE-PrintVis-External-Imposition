@@ -18,9 +18,9 @@ codeunit 50536 "PEQI Part Mapper"
         JsonHelper: Codeunit "PEQI Json Helper";
         Units: Codeunit "PEQI Unit Converter";
         EnumNames: Codeunit "PEQI Enum Names";
+        SheetReader: Codeunit "PEQI Job Sheet Reader";
         NoMappingErr: Label 'Component type %1 on job %2/%3/%4 has no imposition part mapping. Add it on the Imposition Part Mappings page.', Comment = '%1 component type, %2 case, %3 job, %4 version';
-        NoPaperErr: Label 'Paper item %1 on component %2 is not set up for imposition. Add it on the Imposition Paper Setup page.', Comment = '%1 paper item no., %2 component type';
-        PaperClashErr: Label 'Component %1 spans two papers: job item %2 runs on %3 and job item %4 runs on %5. A part is imposed on one stock.', Comment = '%1 component, %2 %4 job item nos, %3 %5 paper item nos';
+        PaperClashErr: Label 'Component %1 spans two sheets: job item %2 runs on %3 and job item %4 runs on %5, at a different paper or printing format. A part is imposed on one stock.', Comment = '%1 component, %2 %4 job item nos, %3 %5 paper item nos';
         FormatClashErr: Label 'Component %1 spans two trim formats: job item %2 is %3 x %4 and job item %5 is %6 x %7.', Comment = '%1 component, %2 %5 job item nos, %3 %4 %6 %7 dimensions';
         NoComponentsErr: Label 'Job %1/%2/%3 has no job items, so there is nothing to impose.', Comment = '%1 case, %2 job, %3 version';
 
@@ -35,6 +35,7 @@ codeunit 50536 "PEQI Part Mapper"
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
         JobItem.SetRange(Version, VersionNo);
+        SheetReader.Load(CaseId, JobNo, VersionNo);
         // "Active" is deliberately not filtered on. PrintVis leaves it false on job items that
         // are plainly going to print, so filtering on it returned nothing at all and the job
         // looked empty. Every job item of the version is taken instead.
@@ -70,8 +71,8 @@ codeunit 50536 "PEQI Part Mapper"
         JobItem: Record "PVS Job Item";
         PartMapping: Record "PEQI Part Mapping";
         FirstItem: Record "PVS Job Item";
-        FirstPaper: Code[20];
-        ItemPaper: Code[20];
+        FirstSubstrate: Integer;
+        ItemSubstrate: Integer;
         TotalPages: Integer;
         FrontColors: Integer;
         BackColors: Integer;
@@ -85,7 +86,7 @@ codeunit 50536 "PEQI Part Mapper"
         JobItem.SetRange("Component Type", ComponentType);
         JobItem.FindSet();
         FirstItem := JobItem;
-        FirstPaper := PaperItemNo(FirstItem);
+        FirstSubstrate := SheetReader.SubstrateIdOf(FirstItem."Sheet ID");
 
         repeat
             // A component spanning two formats is an invariant violation in
@@ -94,14 +95,14 @@ codeunit 50536 "PEQI Part Mapper"
                 Error(FormatClashErr, ComponentType,
                       FirstItem."Job Item No.", FirstItem.Width, FirstItem.Length,
                       JobItem."Job Item No.", JobItem.Width, JobItem.Length);
-            // And one paper, for the same reason: the part is pinned to the stock its first job
-            // item names, so a sibling on different stock would be imposed on paper nobody chose
-            // for it.
-            ItemPaper := PaperItemNo(JobItem);
-            if ItemPaper <> FirstPaper then
+            // One part, one stock: the part is pinned to the sheet group its first job item is in,
+            // so a sibling on a different paper -- or the same paper at a different printing
+            // format -- would be imposed on a sheet nobody chose for it.
+            ItemSubstrate := SheetReader.SubstrateIdOf(JobItem."Sheet ID");
+            if ItemSubstrate <> FirstSubstrate then
                 Error(PaperClashErr, ComponentType,
-                      FirstItem."Job Item No.", FirstPaper,
-                      JobItem."Job Item No.", ItemPaper);
+                      FirstItem."Job Item No.", PaperItemNo(FirstItem),
+                      JobItem."Job Item No.", PaperItemNo(JobItem));
             TotalPages += JobItem."No. Of Pages";
             if JobItem."Colors Front" > FrontColors then
                 FrontColors := JobItem."Colors Front";
@@ -119,7 +120,7 @@ codeunit 50536 "PEQI Part Mapper"
         JsonHelper.AddText(Part, 'grainRule', EnumNames.GrainRule(PartMapping."Grain Rule"));
         JsonHelper.AddInteger(Part, 'frontColors', FrontColors);
         JsonHelper.AddInteger(Part, 'backColors', BackColors);
-        Part.Add('catalog', BuildPartCatalog(FirstPaper, ComponentType));
+        Part.Add('catalog', BuildPartCatalog(FirstSubstrate));
     end;
 
     /// <summary>The paper the component runs on, read from the sheet that records it.</summary>
@@ -149,21 +150,15 @@ codeunit 50536 "PEQI Part Mapper"
         exit(JobSheet."Paper Item No.");
     end;
 
-    /// <summary>A part still selects its own stock even when the request states its
-    /// paper - parts[].catalog.substrateIds is not among the refused filters.</summary>
-    local procedure BuildPartCatalog(PaperItemNumber: Code[20]; ComponentType: Code[20]) Catalog: JsonObject
+    /// <summary>A part selects its own sheet group -- parts[].catalog.substrateIds is not among
+    /// the refused filters, so it stands beside the stated sheets.</summary>
+    local procedure BuildPartCatalog(SubstrateId: Integer) Catalog: JsonObject
     var
-        PaperSetup: Record "PEQI Paper Setup";
         Ids: JsonArray;
     begin
-        // A job item with no sheet behind it names no paper, and that is not an error: the
-        // engine then chooses for that part from the job-wide list, as it did for every part
-        // before this was pinned at all.
-        if PaperItemNumber = '' then
+        if SubstrateId = 0 then
             exit;
-        if not PaperSetup.Get(PaperItemNumber, '') then
-            Error(NoPaperErr, PaperItemNumber, ComponentType);
-        Ids.Add(PaperSetup."Substrate Id");
+        Ids.Add(SubstrateId);
         Catalog.Add('substrateIds', Ids);
     end;
 }

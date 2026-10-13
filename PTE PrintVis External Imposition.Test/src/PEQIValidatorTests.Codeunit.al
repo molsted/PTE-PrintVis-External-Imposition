@@ -33,7 +33,7 @@ codeunit 50611 "PEQI Validator Tests"
     begin
         // [GIVEN] a body with three pages
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPaper('PAPER-100');
+        TestData.AddPaperItem('PAPER-100', 'Paper 100');
         TestData.AddJobItem(7001, 1, 1, 1, 'BODY', 3, 210, 297, 'PAPER-100');
 
         // [WHEN] the job is validated
@@ -49,7 +49,7 @@ codeunit 50611 "PEQI Validator Tests"
         Problems: List of [Text];
     begin
         // [GIVEN] a job with two unmapped component types
-        TestData.AddPaper('PAPER-100');
+        TestData.AddPaperItem('PAPER-100', 'Paper 100');
         TestData.AddJobItem(7002, 1, 1, 1, 'UNMAPPED-A', 4, 210, 297, 'PAPER-100');
         TestData.AddJobItem(7002, 1, 1, 2, 'UNMAPPED-B', 8, 210, 297, 'PAPER-100');
 
@@ -75,31 +75,58 @@ codeunit 50611 "PEQI Validator Tests"
     end;
 
     [Test]
-    procedure PaperWithNoSheetFormatIsRefused()
+    procedure ASheetWithNoPrintingFormatIsReported()
     var
         Problems: List of [Text];
-        PaperSetup: Record "PEQI Paper Setup";
-        Item: Record Item;
     begin
-        // [GIVEN] a paper marked for imposition whose item has no sheet size
-        Item.Init();
-        Item."No." := 'PAPER-NOSIZE';
-        Item."PVS Format 1" := 0;
-        Item."PVS Format 2" := 0;
-        Item.Insert(true);
-        PaperSetup.Init();
-        PaperSetup."Item No." := 'PAPER-NOSIZE';
-        PaperSetup."Use for Imposition" := true;
-        PaperSetup.Insert(true);
-
+        // [GIVEN] a body on a sheet with no printing format
+        TestData.AddPaperItem('PAPER-100', 'Paper 100');
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddJobItem(7003, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-NOSIZE');
+        TestData.AddJobItem(7003, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-100');
+        TestData.SetSheetFormat(7003, 1, 0, 0);
 
         // [WHEN] the job is validated
         Validator.Validate(7003, 1, 1, Problems);
 
-        // [THEN] the paper is named
-        Assert.IsTrue(ProblemsMention(Problems, 'PAPER-NOSIZE'), 'The problem names the item');
+        // [THEN] the sheet is named, so the planner knows which one to fix in PrintVis
+        Assert.IsTrue(ProblemsMention(Problems, Format(TestData.SheetIdFor(7003, 1))), 'The problem names the sheet');
+    end;
+
+    [Test]
+    procedure ASheetWhosePaperItemIsMissingIsReported()
+    var
+        Problems: List of [Text];
+    begin
+        // [GIVEN] a sheet naming a paper item that does not exist
+        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddJobItem(7004, 1, 1, 1, 'BODY', 32, 210, 297, 'NO-SUCH-ITEM');
+
+        // [WHEN] the job is validated
+        Validator.Validate(7004, 1, 1, Problems);
+
+        // [THEN] it is reported naming the missing item, not sent with a blank name
+        Assert.IsTrue(ProblemsMention(Problems, 'NO-SUCH-ITEM'), 'The problem names the missing paper item');
+    end;
+
+    [Test]
+    procedure AJobItemWithNoSheetIsReported()
+    var
+        Problems: List of [Text];
+        JobItem: Record "PVS Job Item";
+    begin
+        // [GIVEN] a job item whose sheet link is empty
+        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddJobItem(7005, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-100');
+        JobItem.SetRange(ID, 7005);
+        JobItem.FindFirst();
+        JobItem."Sheet ID" := 0;
+        JobItem.Modify(false);
+
+        // [WHEN] the job is validated
+        Validator.Validate(7005, 1, 1, Problems);
+
+        // [THEN] the component is named
+        Assert.IsTrue(ProblemsMention(Problems, 'BODY'), 'The problem names the component');
     end;
 
     [Test]

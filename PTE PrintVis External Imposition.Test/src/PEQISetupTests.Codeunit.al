@@ -61,37 +61,4 @@ codeunit 50609 "PEQI Setup Tests"
         PressSetup.Get('PRESS02', 'STD');
         Assert.AreEqual(Original, PressSetup."Press Id", 'Press Id must never change');
     end;
-
-    [Test]
-    procedure SubstrateIdIsSequentialAndNeverReused()
-    var
-        PaperSetup: Record "PEQI Paper Setup";
-        First: Integer;
-        Second: Integer;
-    begin
-        // [GIVEN] two paper setup rows
-        PaperSetup.Init();
-        PaperSetup."Item No." := 'PAPER-A';
-        PaperSetup.Insert(true);
-        First := PaperSetup."Substrate Id";
-
-        PaperSetup.Init();
-        PaperSetup."Item No." := 'PAPER-B';
-        PaperSetup.Insert(true);
-        Second := PaperSetup."Substrate Id";
-
-        // [THEN] they differ and ascend
-        Assert.AreNotEqual(First, Second, 'Substrate Ids must be distinct');
-        Assert.IsTrue(Second > First, 'Substrate Ids ascend');
-
-        // [WHEN] the later row is deleted and a third is inserted
-        PaperSetup.Get('PAPER-B', '');
-        PaperSetup.Delete(true);
-        PaperSetup.Init();
-        PaperSetup."Item No." := 'PAPER-C';
-        PaperSetup.Insert(true);
-
-        // [THEN] the deleted id is not handed out again
-        Assert.IsTrue(PaperSetup."Substrate Id" > Second, 'Substrate Ids are never reused');
-    end;
 }

@@ -21,56 +21,91 @@ codeunit 50537 "PEQI Catalog Mapper"
         Units: Codeunit "PEQI Unit Converter";
         EnumNames: Codeunit "PEQI Enum Names";
 
-    /// <summary>The paper half. Dimensions, grammage, caliper and grain are read
-    /// live from the item so they cannot drift from PrintVis; the setup row
-    /// contributes the surrogate id, the mark, and overrides where PrintVis is silent.</summary>
-    procedure BuildSheets() Sheets: JsonArray
+    /// <summary>The paper half: the job's own sheets, as the CSR decided them.</summary>
+    /// <remarks>
+    /// No shop-wide list and no overrides. Each substrate is a group of the job's sheets with one
+    /// paper at one printing format (see "PEQI Job Sheet Reader"); its id is the group's lowest
+    /// Sheet ID. Sizes are the printing format -- the sheet that goes on the press, after any cut
+    /// from the purchased sheet.
+    /// </remarks>
+    procedure BuildSheets(CaseId: Integer; JobNo: Integer; VersionNo: Integer) Sheets: JsonArray
     var
-        PaperSetup: Record "PEQI Paper Setup";
+        Reader: Codeunit "PEQI Job Sheet Reader";
+        JobSheet: Record "PVS Job Sheet";
         Item: Record Item;
-        Setup: Record "PEQI Imposition Setup";
         Sheet: JsonObject;
-        Grain: Enum "PEQI Sheet Grain";
+        SubstrateId: Integer;
+        Grain: Text;
     begin
-        Setup := Setup.GetSetup();
-        PaperSetup.SetRange("Use for Imposition", true);
-        if not PaperSetup.FindSet() then
-            exit;
-
-        repeat
-            if Item.Get(PaperSetup."Item No.") then begin
+        Reader.Load(CaseId, JobNo, VersionNo);
+        foreach SubstrateId in Reader.SubstrateIds() do
+            if JobSheet.Get(SubstrateId) then begin
                 Clear(Sheet);
-                JsonHelper.AddInteger(Sheet, 'id', PaperSetup."Substrate Id");
-                JsonHelper.AddText(Sheet, 'name', ItemName(Item));
-                JsonHelper.AddText(Sheet, 'vendorSku', VendorSku(PaperSetup, Item));
-                // Converted, because PrintVis stores these in the installation's own unit and
-                // the engine reads every '...Mm' field as millimetres. Our own setup fields below
-                // are already named '(mm)' and are left alone.
-                //
-                // Larger into width, smaller into height, always. A press sheet is never
-                // expressed or run the other way up, and PrintVis does not keep the two formats
-                // in that order -- every paper in the sample had Format 1 as the short side. Sent
-                // as stored, a 28 x 40 sheet reached the engine as 280 wide by 400 tall: a sheet
-                // that does not exist, which the solver then had to turn back the right way
-                // before it could place anything on it.
-                JsonHelper.AddDecimal(Sheet, 'widthMm', Units.FormatToMm(Longer(Item)));
-                JsonHelper.AddDecimal(Sheet, 'heightMm', Units.FormatToMm(Shorter(Item)));
+                if not Item.Get(JobSheet."Paper Item No.") then
+                    Clear(Item);
+                JsonHelper.AddInteger(Sheet, 'id', SubstrateId);
+                JsonHelper.AddText(Sheet, 'name', Item.Description);
+                JsonHelper.AddText(Sheet, 'vendorSku', Item."PVS Paper No.");
+                // Larger into width, smaller into height, always: a press sheet is never
+                // expressed or run the other way up.
+                JsonHelper.AddDecimal(Sheet, 'widthMm', Units.FormatToMm(LongerOf(JobSheet.Length, JobSheet.Width)));
+                JsonHelper.AddDecimal(Sheet, 'heightMm', Units.FormatToMm(ShorterOf(JobSheet.Length, JobSheet.Width)));
 
-                Grain := PaperSetup.EffectiveGrain();
-                if Grain <> Grain::" " then
-                    JsonHelper.AddText(Sheet, 'grain', EnumNames.SheetGrain(Grain));
+                Grain := SheetGrain(JobSheet);
+                if Grain <> '' then
+                    JsonHelper.AddText(Sheet, 'grain', Grain);
 
-                // Whole numbers, because the engine declares both as int and System.Text.Json
-                // refuses a fractional token for one -- it does not round, it throws, and the
-                // solve comes back 500. An AL Decimal carries its scale, so even a grammage of
-                // exactly 130 is written '130.0' and is rejected; this is not only about papers
-                // measured in halves. PrintVis records both to a precision neither the engine
-                // nor a press cares about, so rounding at the boundary loses nothing.
-                JsonHelper.AddIntegerIfSet(Sheet, 'grammageGsm', Round(Grammage(PaperSetup, Item), 1, '='));
-                JsonHelper.AddIntegerIfSet(Sheet, 'caliperMicrons', Round(Caliper(PaperSetup, Item), 1, '='));
+                // Whole numbers: the engine declares both as int and refuses a fractional token.
+                // A basis-less weight unit is quoted over the purchased sheet.
+                JsonHelper.AddIntegerIfSet(Sheet, 'grammageGsm', Round(Units.WeightToGsm(JobSheet.Weight, JobSheet."Weight Unit",
+                    JobSheet."Full Sheet Format 1", JobSheet."Full Sheet Format 2"), 1, '='));
+                JsonHelper.AddIntegerIfSet(Sheet, 'caliperMicrons', Round(Units.ThicknessToMicrons(JobSheet.Thickness,
+                    JobSheet.Weight, JobSheet."Weight Unit"), 1, '='));
                 Sheets.Add(Sheet);
             end;
-        until PaperSetup.Next() = 0;
+    end;
+
+    /// <summary>The grain of the sheet that goes on the press, or blank when it is not known.</summary>
+    /// <remarks>
+    /// "Full Sheet Grain Direction" is stated against the purchased sheet. When the printing
+    /// format is that sheet -- in either orientation -- it maps as an item's grain always has:
+    /// 1&gt;2 is Short, 1&lt;2 is Long. When the printing format is cut from it, which full-sheet
+    /// edge became which press-sheet edge is not established yet, so no grain is claimed and the
+    /// engine reports it unverified. A wrong grain is worse than none.
+    /// </remarks>
+    local procedure SheetGrain(JobSheet: Record "PVS Job Sheet"): Text
+    begin
+        if not IsUncut(JobSheet) then
+            exit('');
+        case JobSheet."Full Sheet Grain Direction" of
+            JobSheet."Full Sheet Grain Direction"::"1>2":
+                exit('Short');
+            JobSheet."Full Sheet Grain Direction"::"1<2":
+                exit('Long');
+        end;
+        exit('');
+    end;
+
+    local procedure IsUncut(JobSheet: Record "PVS Job Sheet"): Boolean
+    begin
+        if (JobSheet."Full Sheet Format 1" = 0) or (JobSheet."Full Sheet Format 2" = 0) then
+            exit(false);
+        exit(((JobSheet.Length = JobSheet."Full Sheet Format 1") and (JobSheet.Width = JobSheet."Full Sheet Format 2")) or
+             ((JobSheet.Length = JobSheet."Full Sheet Format 2") and (JobSheet.Width = JobSheet."Full Sheet Format 1")));
+    end;
+
+    local procedure LongerOf(A: Decimal; B: Decimal): Decimal
+    begin
+        if A >= B then
+            exit(A);
+        exit(B);
+    end;
+
+    local procedure ShorterOf(A: Decimal; B: Decimal): Decimal
+    begin
+        if A >= B then
+            exit(B);
+        exit(A);
     end;
 
     /// <summary>Which edge the sheet is laid to, as the engine names edges.</summary>
@@ -106,57 +141,6 @@ codeunit 50537 "PEQI Catalog Mapper"
         end;
 
         exit('');
-    end;
-
-    /// <summary>The sheet's long edge, which is always its width.</summary>
-    local procedure Longer(Item: Record Item): Decimal
-    begin
-        if Item."PVS Format 1" >= Item."PVS Format 2" then
-            exit(Item."PVS Format 1");
-        exit(Item."PVS Format 2");
-    end;
-
-    /// <summary>The sheet's short edge, which is always its height.</summary>
-    local procedure Shorter(Item: Record Item): Decimal
-    begin
-        if Item."PVS Format 1" >= Item."PVS Format 2" then
-            exit(Item."PVS Format 2");
-        exit(Item."PVS Format 1");
-    end;
-
-    /// <summary>The stock's name, which is the item's own description.</summary>
-    /// <remarks>
-    /// This used to prefer "PVS Paper Description", which never once decided anything: it is a
-    /// FlowField -- <c>lookup(Item.Description where("No." = field("PVS Paper No.")))</c> -- and
-    /// reads blank until CalcFields runs, so the branch was dead and every name came from here
-    /// anyway. Saying so plainly, because the repair that looks obvious is to add the CalcFields,
-    /// and that is not a repair: it would rename every sheet from the item PrintVis stocks to
-    /// the paper grade above it, which is the less specific of the two.
-    /// </remarks>
-    local procedure ItemName(Item: Record Item): Text
-    begin
-        exit(Item.Description);
-    end;
-
-    local procedure VendorSku(PaperSetup: Record "PEQI Paper Setup"; Item: Record Item): Text
-    begin
-        if PaperSetup."Vendor Sku Override" <> '' then
-            exit(PaperSetup."Vendor Sku Override");
-        exit(Item."PVS Paper No.");
-    end;
-
-    local procedure Grammage(PaperSetup: Record "PEQI Paper Setup"; Item: Record Item): Decimal
-    begin
-        if PaperSetup."Grammage Override (gsm)" <> 0 then
-            exit(PaperSetup."Grammage Override (gsm)");
-        exit(Units.WeightToGsm(Item));
-    end;
-
-    local procedure Caliper(PaperSetup: Record "PEQI Paper Setup"; Item: Record Item): Decimal
-    begin
-        if PaperSetup."Caliper Override (microns)" <> 0 then
-            exit(PaperSetup."Caliper Override (microns)");
-        exit(Units.ThicknessToMicrons(Item));
     end;
 
     /// <summary>The press half. The measurements come from PrintVis's cost centre

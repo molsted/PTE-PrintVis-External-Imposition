@@ -26,14 +26,6 @@ enum 50551 "PEQI Press Type"
     value(1; Digital) { Caption = 'Digital'; }
 }
 
-enum 50552 "PEQI Sheet Grain"
-{
-    Extensible = false;
-    value(0; " ") { Caption = 'Not recorded'; }
-    value(1; Short) { Caption = 'Short'; }
-    value(2; Long) { Caption = 'Long'; }
-}
-
 enum 50553 "PEQI Press Edge"
 {
     Extensible = false;

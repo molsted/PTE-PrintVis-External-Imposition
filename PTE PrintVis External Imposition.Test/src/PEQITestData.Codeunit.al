@@ -10,6 +10,7 @@
 
 namespace PrintersEquity.ExternalImposition.Tests;
 
+using Microsoft.Inventory.Item;
 using PrintersEquity.ExternalImposition.Enums;
 using PrintersEquity.ExternalImposition.Setup;
 
@@ -82,17 +83,6 @@ codeunit 50602 "PEQI Test Data"
         PartMapping.Insert(true);
     end;
 
-    procedure AddPaper(ItemNo: Code[20]): Integer
-    var
-        PaperSetup: Record "PEQI Paper Setup";
-    begin
-        PaperSetup.Init();
-        PaperSetup."Item No." := ItemNo;
-        PaperSetup."Use for Imposition" := true;
-        PaperSetup.Insert(true);
-        exit(PaperSetup."Substrate Id");
-    end;
-
     /// <summary>Inserts a PVS Job Sheet carrying a finishing code. PrintVis lets a
     /// shop state finishing per sheet instead of on the job.</summary>
     procedure AddJobSheet(CaseId: Integer; JobNo: Integer; VersionNo: Integer; SheetId: Integer; FinishingCode: Code[20])
@@ -104,14 +94,62 @@ codeunit 50602 "PEQI Test Data"
         Save(JobSheet);
     end;
 
-    /// <summary>Puts the paper on the sheet, leaving any finishing already stated there.</summary>
+    /// <summary>Puts the paper on the sheet, leaving any finishing already stated there. A new
+    /// sheet gets a 640 x 450 printing format and the same full sheet, so it is uncut unless a
+    /// test says otherwise.</summary>
     local procedure SetSheetPaper(CaseId: Integer; JobNo: Integer; VersionNo: Integer; SheetId: Integer; PaperItemNo: Code[20])
     var
         JobSheet: Record "PVS Job Sheet";
     begin
         Sheet(CaseId, JobNo, VersionNo, SheetId, JobSheet);
         JobSheet."Paper Item No." := PaperItemNo;
+        if (JobSheet.Length = 0) and (JobSheet.Width = 0) then begin
+            JobSheet.Length := 640;
+            JobSheet.Width := 450;
+            JobSheet."Full Sheet Format 1" := 640;
+            JobSheet."Full Sheet Format 2" := 450;
+        end;
         Save(JobSheet);
+    end;
+
+    /// <summary>The printing format of the sheet behind a job item.</summary>
+    procedure SetSheetFormat(CaseId: Integer; JobItemNo: Integer; Length: Decimal; Width: Decimal)
+    var
+        JobSheet: Record "PVS Job Sheet";
+    begin
+        JobSheet.Get(SheetIdFor(CaseId, JobItemNo));
+        JobSheet.Length := Length;
+        JobSheet.Width := Width;
+        JobSheet.Modify(false);
+    end;
+
+    /// <summary>The purchased sheet behind a job item, and its grain. Grain1Gt2 sets "1&gt;2",
+    /// otherwise "1&lt;2".</summary>
+    procedure SetSheetFullFormat(CaseId: Integer; JobItemNo: Integer; Format1: Decimal; Format2: Decimal; Grain1Gt2: Boolean)
+    var
+        JobSheet: Record "PVS Job Sheet";
+    begin
+        JobSheet.Get(SheetIdFor(CaseId, JobItemNo));
+        JobSheet."Full Sheet Format 1" := Format1;
+        JobSheet."Full Sheet Format 2" := Format2;
+        if Grain1Gt2 then
+            JobSheet."Full Sheet Grain Direction" := JobSheet."Full Sheet Grain Direction"::"1>2"
+        else
+            JobSheet."Full Sheet Grain Direction" := JobSheet."Full Sheet Grain Direction"::"1<2";
+        JobSheet.Modify(false);
+    end;
+
+    /// <summary>An Item for a paper, so a sheet's paper resolves to a name.</summary>
+    procedure AddPaperItem(ItemNo: Code[20]; Description: Text[100])
+    var
+        Item: Record Item;
+    begin
+        if Item.Get(ItemNo) then
+            exit;
+        Item.Init();
+        Item."No." := ItemNo;
+        Item.Description := Description;
+        Item.Insert(false);
     end;
 
     /// <summary>The sheet row, existing or new. A job item and a finishing code reach the same

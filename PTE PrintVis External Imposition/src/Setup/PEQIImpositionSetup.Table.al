@@ -84,13 +84,6 @@ table 50500 "PEQI Imposition Setup"
             // rather than a constant: a US installation records basis weights such as BOOK,
             // where "70" is 70 lb book and about 104 gsm, not 70 gsm.
         }
-
-        field(50; "Last Substrate Id"; Integer)
-        {
-            Caption = 'Last Substrate Id';
-            Editable = false;
-            ToolTip = 'High-water mark for substrate ids. It only ever rises, so a deleted paper''s id is never handed to a different paper.';
-        }
     }
 
     keys
@@ -140,25 +133,4 @@ table 50500 "PEQI Imposition Setup"
     begin
         exit(IsolatedStorage.Contains(ApiKeyTok, DataScope::Company));
     end;
-
-    /// <summary>Issues the next substrate id and records it. A high-water mark
-    /// rather than max-plus-one over the rows: deleting the highest paper must not
-    /// release its id, because a stored request or a written ticket may still name it.
-    /// Lock is taken before the read to prevent concurrent id allocation.</summary>
-    procedure NextSubstrateId(): Integer
-    var
-        Setup: Record "PEQI Imposition Setup";
-    begin
-        Setup.LockTable();
-        if not Setup.Get('') then begin
-            Setup.Init();
-            Setup."Primary Key" := '';
-            Setup.Insert(true);
-        end;
-        Setup."Last Substrate Id" += 1;
-        Setup.Modify(true);
-        exit(Setup."Last Substrate Id");
-    end;
-
-
 }

@@ -20,7 +20,6 @@ permissionset 50581 "PEQI Imp. Setup"
     Permissions =
         tabledata "PEQI Imposition Setup" = RIMD,
         tabledata "PEQI Press Setup" = RIMD,
-        tabledata "PEQI Paper Setup" = RIMD,
         tabledata "PEQI Binding Mapping" = RIMD,
         tabledata "PEQI Part Mapping" = RIMD;
 }

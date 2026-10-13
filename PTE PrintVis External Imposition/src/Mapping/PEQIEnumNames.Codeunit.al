@@ -135,18 +135,6 @@ codeunit 50546 "PEQI Enum Names"
         exit('Body');
     end;
 
-    /// <summary>MediaGrainDirection: Unknown, NotRecorded, Long, Short.</summary>
-    procedure SheetGrain(Value: Enum "PEQI Sheet Grain"): Text
-    begin
-        case Value of
-            Value::Short:
-                exit('Short');
-            Value::Long:
-                exit('Long');
-        end;
-        exit('NotRecorded');
-    end;
-
     /// <summary>JobType: Digital, Offset.</summary>
     procedure PressType(Value: Enum "PEQI Press Type"): Text
     begin

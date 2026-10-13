@@ -62,7 +62,7 @@ codeunit 50535 "PEQI Request Builder"
         // The self-contained set. Stating a half replaces its catalogue, so the
         // matching catalog filters are omitted by construction rather than
         // discovered as a 400.
-        RequestObject.Add('sheets', CatalogMapper.BuildSheets());
+        RequestObject.Add('sheets', CatalogMapper.BuildSheets(CaseId, JobNo, VersionNo));
         RequestObject.Add('presses', CatalogMapper.BuildPresses());
         RequestObject.Add('foldPatterns', CatalogMapper.BuildFoldPatterns());
 
