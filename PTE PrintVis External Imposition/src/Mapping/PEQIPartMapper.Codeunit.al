@@ -72,6 +72,7 @@ codeunit 50536 "PEQI Part Mapper"
         JobItem: Record "PVS Job Item";
         ComponentTypeRec: Record "PVS Component Types";
         FirstItem: Record "PVS Job Item";
+        Setup: Record "PEQI Imposition Setup";
         ProductType: Text;
         FirstSubstrate: Integer;
         ItemSubstrate: Integer;
@@ -84,6 +85,8 @@ codeunit 50536 "PEQI Part Mapper"
         ProductType := EnumNames.OptionMemberName(ComponentTypeRec, ComponentTypeRec.FieldNo("JDF Product Type"));
         if ProductType = 'Unknown' then
             Error(NoProductTypeErr, ComponentType);
+
+        Setup := Setup.GetSetup();
 
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
@@ -122,10 +125,31 @@ codeunit 50536 "PEQI Part Mapper"
         // a trim and a sheet have to be in the same unit or nothing fits anything.
         JsonHelper.AddDecimal(Part, 'trimWidthMm', Units.FormatToMm(FirstItem.Width));
         JsonHelper.AddDecimal(Part, 'trimHeightMm', Units.FormatToMm(FirstItem.Length));
+        // PrintVis records trims on the job item; BC used to send none, so every job was imposed
+        // on the engine's flat 3 mm whatever the CSR set. Each edge takes the first stated of:
+        // the job item's own, its all-round Trim, the setup default, then nothing.
+        AddTrim(Part, 'trimHeadMm', FirstItem."Trim Head", FirstItem.Trim, Setup."Default Trim Head");
+        AddTrim(Part, 'trimFootMm', FirstItem."Trim Foot", FirstItem.Trim, Setup."Default Trim Foot");
+        AddTrim(Part, 'trimFaceMm', FirstItem."Trim Face", FirstItem.Trim, Setup."Default Trim Face");
         JsonHelper.AddText(Part, 'grainRule', EnumNames.ComponentGrainRule(ComponentTypeRec."PEQI Grain Rule", ComponentType));
         JsonHelper.AddInteger(Part, 'frontColors', FrontColors);
         JsonHelper.AddInteger(Part, 'backColors', BackColors);
         Part.Add('catalog', BuildPartCatalog(FirstSubstrate));
+    end;
+
+    /// <summary>One trim edge from the first source that states it. Zero means "not stated" -- a
+    /// decimal cannot tell an unset trim from a deliberate 0, and a wrong 3 mm on every job is
+    /// what this replaces. All three sources are in the margin unit.</summary>
+    local procedure AddTrim(var Part: JsonObject; Name: Text; Own: Decimal; AllRound: Decimal; SetupDefault: Decimal)
+    begin
+        if Own <> 0 then
+            JsonHelper.AddDecimal(Part, Name, Units.MarginToMm(Own))
+        else
+            if AllRound <> 0 then
+                JsonHelper.AddDecimal(Part, Name, Units.MarginToMm(AllRound))
+            else
+                if SetupDefault <> 0 then
+                    JsonHelper.AddDecimal(Part, Name, Units.MarginToMm(SetupDefault));
     end;
 
     /// <summary>The paper the component runs on, read from the sheet that records it.</summary>

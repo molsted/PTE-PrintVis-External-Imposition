@@ -52,38 +52,10 @@ table 50500 "PEQI Imposition Setup"
             Caption = 'Job ID Format';
             InitValue = '%1-%2-%3';
         }
-        field(30; "Default Trim Head (mm)"; Decimal) { Caption = 'Default Trim Head (mm)'; DecimalPlaces = 0 : 3; }
-        field(31; "Default Trim Foot (mm)"; Decimal) { Caption = 'Default Trim Foot (mm)'; DecimalPlaces = 0 : 3; }
-        field(32; "Default Trim Face (mm)"; Decimal) { Caption = 'Default Trim Face (mm)'; DecimalPlaces = 0 : 3; }
-        field(40; "Thickness Is Microns"; Boolean)
-        {
-            ObsoleteState = Pending;
-            ObsoleteReason = 'Superseded by PVS Unit Conversion. Caliper2Format and Format2Micrometer state the caliper unit from PrintVis''s own setup, so there is nothing left for this flag to decide.';
-            ObsoleteTag = '1.0';
-            Caption = 'Thickness Is Microns';
-            // Escape hatch for data already held in microns. Normally false: PrintVis keeps
-            // thickness in a thousandth of the general unit, which "PEQI Unit Converter"
-            // converts. Was spec open item 15.1; settled against real paper, see that codeunit.
-        }
-        field(41; "Weight Is Gsm"; Boolean)
-        {
-            ObsoleteState = Pending;
-            ObsoleteReason = 'Superseded by "Grammage Weight Unit". A weight is not gsm or not-gsm: PrintVis records it in a named unit, and Convert_PaperWeight converts between them.';
-            ObsoleteTag = '1.0';
-            Caption = 'Weight Is g/m2';
-            InitValue = true;
-        }
-        field(42; "Grammage Weight Unit"; Code[20])
-        {
-            Caption = 'Grammage Weight Unit';
-            ObsoleteState = Pending;
-            ObsoleteReason = 'Not needed. Grammage is computed from the weight unit''s own basis area, and a US installation has no grammage row to point at in any case.';
-            ObsoleteTag = '1.0';
-            TableRelation = "PVS Standard Units".Code where(Type = const("Paper weight"));
-            // Which of PrintVis's paper-weight units means grams per square metre. Shop data
-            // rather than a constant: a US installation records basis weights such as BOOK,
-            // where "70" is 70 lb book and about 104 gsm, not 70 gsm.
-        }
+        // In the installation's margin unit, as PrintVis's own trims are. Used when a job item states none.
+        field(30; "Default Trim Head"; Decimal) { Caption = 'Default Trim Head'; DecimalPlaces = 0 : 5; }
+        field(31; "Default Trim Foot"; Decimal) { Caption = 'Default Trim Foot'; DecimalPlaces = 0 : 5; }
+        field(32; "Default Trim Face"; Decimal) { Caption = 'Default Trim Face'; DecimalPlaces = 0 : 5; }
     }
 
     keys

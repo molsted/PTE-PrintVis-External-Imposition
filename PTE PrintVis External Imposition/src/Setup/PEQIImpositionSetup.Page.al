@@ -10,6 +10,8 @@
 
 namespace PrintersEquity.ExternalImposition.Setup;
 
+using PrintersEquity.ExternalImposition.Mapping;
+
 page 50510 "PEQI Imposition Setup"
 {
     Caption = 'Imposition Setup';
@@ -64,9 +66,9 @@ page 50510 "PEQI Imposition Setup"
                 Caption = 'Solving';
                 field("Grain Policy"; Rec."Grain Policy") { ApplicationArea = All; }
                 field("Max Solutions"; Rec."Max Solutions") { ApplicationArea = All; }
-                field("Default Trim Head (mm)"; Rec."Default Trim Head (mm)") { ApplicationArea = All; }
-                field("Default Trim Foot (mm)"; Rec."Default Trim Foot (mm)") { ApplicationArea = All; }
-                field("Default Trim Face (mm)"; Rec."Default Trim Face (mm)") { ApplicationArea = All; }
+                field("Default Trim Head"; Rec."Default Trim Head") { ApplicationArea = All; CaptionClass = Units.MarginCaptionClass('Default Trim Head'); ToolTip = 'Head trim for a part whose job item states none.'; }
+                field("Default Trim Foot"; Rec."Default Trim Foot") { ApplicationArea = All; CaptionClass = Units.MarginCaptionClass('Default Trim Foot'); ToolTip = 'Foot trim for a part whose job item states none.'; }
+                field("Default Trim Face"; Rec."Default Trim Face") { ApplicationArea = All; CaptionClass = Units.MarginCaptionClass('Default Trim Face'); ToolTip = 'Face trim for a part whose job item states none.'; }
             }
             group(Ticket)
             {
@@ -126,6 +128,7 @@ page 50510 "PEQI Imposition Setup"
     }
 
     var
+        Units: Codeunit "PEQI Unit Converter";
         ApiKey: Text;
         KeyIsSet: Boolean;
 

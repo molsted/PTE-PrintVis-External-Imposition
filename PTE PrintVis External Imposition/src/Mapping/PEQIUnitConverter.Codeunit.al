@@ -39,7 +39,6 @@ codeunit 50545 "PEQI Unit Converter"
 {
     var
         UnitConversion: Codeunit "PVS Unit Conversion";
-        NoGrammageUnitErr: Label 'No grammage weight unit is set on Imposition Setup, so paper weights cannot be converted. Choose the PrintVis weight unit that means grams per square metre.';
 
     /// <summary>A sheet or page format, in millimetres.</summary>
     procedure FormatToMm(Value: Decimal): Decimal
