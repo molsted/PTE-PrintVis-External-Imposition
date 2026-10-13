@@ -93,8 +93,10 @@ codeunit 50535 "PEQI Request Builder"
     procedure SeedOptions(EntryKey: Text): Text
     var
         ImpositionSetup: Record "PEQI Imposition Setup";
+        Units: Codeunit "PEQI Unit Converter";
         Options: JsonObject;
         OptionsText: Text;
+        DisplayUnits: Text;
     begin
         // The product comes from the case, not from the operator typing it.
         Options.Add('readonlyProduct', true);
@@ -106,6 +108,13 @@ codeunit 50535 "PEQI Request Builder"
         // "PEQI Imp. Setup" grants -- decides whether the editor also offers the full one.
         Options.Add('mode', 'approve');
         Options.Add('fullEditorAllowed', ImpositionSetup.WritePermission());
+
+        // Lengths cross the wire in millimetres; this is only what the planner reads them in. From
+        // the format unit, since that is the one sheets and pages are stated in. Omitted when the
+        // unit is not one the editor knows, which leaves the editor's own setting in charge.
+        DisplayUnits := Units.FormatDisplayUnits();
+        if DisplayUnits <> '' then
+            Options.Add('units', DisplayUnits);
 
         Options.WriteTo(OptionsText);
         exit(OptionsText);

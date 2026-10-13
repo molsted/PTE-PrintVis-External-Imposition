@@ -70,6 +70,7 @@ codeunit 50615 "PEQI Document Tests"
         Options: JsonObject;
         Token: JsonToken;
         Allowed: Boolean;
+        DisplayUnits: Text;
     begin
         // [WHEN] the seed options are built for an entry
         Options.ReadFrom(RequestBuilder.SeedOptions('4711-1-1-1'));
@@ -87,5 +88,12 @@ codeunit 50615 "PEQI Document Tests"
         // [THEN] and the entry key still rides along, because the editor echoes it back
         Assert.IsTrue(Options.Get('entryKey', Token), 'The seed carries the entry key');
         Assert.AreEqual('4711-1-1-1', Token.AsValue().AsText(), 'The entry key is unchanged');
+
+        // [THEN] and, when the installation's format unit is one the editor knows, it is named
+        if Options.Get('units', Token) then begin
+            DisplayUnits := Token.AsValue().AsText();
+            Assert.IsTrue((DisplayUnits = 'mm') or (DisplayUnits = 'cm') or (DisplayUnits = 'inch'),
+                          'The display unit is one the editor knows, not ' + DisplayUnits);
+        end;
     end;
 }
