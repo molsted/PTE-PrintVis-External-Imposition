@@ -150,16 +150,16 @@ page 50517 "PEQI Imposition Job Card"
 
                 trigger OnAction()
                 var
-                    PressSetup: Record "PEQI Press Setup";
+                    Config: Record "PVS Cost Center Configuration";
                     SheetReader: Codeunit "PEQI Job Sheet Reader";
                     SizeMsg: Label 'Request: %1 characters (%2 KB).\Sheets: %3. Presses: %4.', Comment = '%1 chars, %2 KB, %3 sheet count, %4 press count';
                     RequestText: Text;
                 begin
                     RequestText := Rec.GetRequestJson();
                     SheetReader.Load(Rec."Case ID", Rec.Job, Rec.Version);
-                    PressSetup.SetRange("Use for Imposition", true);
+                    Config.SetRange("PEQI Use for Imposition", true);
                     Message(SizeMsg, StrLen(RequestText), Round(StrLen(RequestText) / 1024, 0.1),
-                            SheetReader.SubstrateIds().Count(), PressSetup.Count());
+                            SheetReader.SubstrateIds().Count(), Config.Count());
                 end;
             }
 

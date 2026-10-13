@@ -102,3 +102,13 @@ enum 50562 "PEQI Diagnostic Severity"
     value(1; Warn) { Caption = 'Warning'; }
     value(2; Error) { Caption = 'Error'; }
 }
+
+enum 50564 "PEQI Digital Subtype"
+{
+    Extensible = false;
+    Caption = 'Digital Subtype';
+
+    value(0; " ") { Caption = ' '; }
+    value(1; Toner) { Caption = 'Toner'; }
+    value(2; Inkjet) { Caption = 'Inkjet'; }
+}

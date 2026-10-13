@@ -26,7 +26,7 @@ codeunit 50538 "PEQI Request Validator"
         NoSheetPaperMsg: Label 'Sheet %1 of component %2 has no paper item.', Comment = '%1 sheet id, %2 component';
         MissingPaperItemMsg: Label 'Sheet %1 of component %2 names paper item %3, which does not exist.', Comment = '%1 sheet id, %2 component, %3 item no.';
         NoSheetFormatMsg: Label 'Sheet %1 of component %2 has no printing format (Length x Width).', Comment = '%1 sheet id, %2 component';
-        NoPressMsg: Label 'No press is marked Use for Imposition.', Locked = false;
+        NoPressMsg: Label 'No cost center configuration is marked Use for Imposition.', Locked = false;
         NoPressFormatMsg: Label 'Press %1 %2 is marked for imposition but its configuration has no maximum printing format.', Comment = '%1 cost centre, %2 configuration';
 
     /// <summary>Collects every problem rather than stopping at the first, so an
@@ -163,20 +163,16 @@ codeunit 50538 "PEQI Request Validator"
 
     local procedure ValidatePresses(var Problems: List of [Text])
     var
-        PressSetup: Record "PEQI Press Setup";
         Config: Record "PVS Cost Center Configuration";
     begin
-        PressSetup.SetRange("Use for Imposition", true);
-        if PressSetup.IsEmpty() then begin
+        Config.SetRange("PEQI Use for Imposition", true);
+        if not Config.FindSet() then begin
             Problems.Add(NoPressMsg);
             exit;
         end;
-
-        PressSetup.FindSet();
         repeat
-            if Config.Get(PressSetup."Cost Center Code", PressSetup.Configuration) then
-                if (Config."Max Printing Format Width" <= 0) or (Config."Max Printing Format Length" <= 0) then
-                    Problems.Add(StrSubstNo(NoPressFormatMsg, PressSetup."Cost Center Code", PressSetup.Configuration));
-        until PressSetup.Next() = 0;
+            if (Config."Max Printing Format Width" <= 0) or (Config."Max Printing Format Length" <= 0) then
+                Problems.Add(StrSubstNo(NoPressFormatMsg, Config."Cost Center Code", Config.Configuration));
+        until Config.Next() = 0;
     end;
 }

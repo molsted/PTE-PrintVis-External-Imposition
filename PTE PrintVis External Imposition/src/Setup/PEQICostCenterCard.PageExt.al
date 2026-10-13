@@ -10,26 +10,18 @@
 
 namespace PrintersEquity.ExternalImposition.Setup;
 
-page 50511 "PEQI Press Setup List"
+/// <summary>A press is configured where its cost center is.</summary>
+pageextension 50572 "PEQI Cost Center Card" extends "PVS Cost Center Card"
 {
-    Caption = 'Imposition Press Setup';
-    PageType = List;
-    ApplicationArea = All;
-    UsageCategory = Administration;
-    SourceTable = "PEQI Press Setup";
-    CardPageId = "PEQI Press Setup Card";
-
     layout
     {
-        area(Content)
+        addlast(content)
         {
-            repeater(Rows)
+            part(PEQIPressConfigurations; "PEQI Press Configurations")
             {
-                field("Cost Center Code"; Rec."Cost Center Code") { ApplicationArea = All; }
-                field(Configuration; Rec.Configuration) { ApplicationArea = All; }
-                field("Use for Imposition"; Rec."Use for Imposition") { ApplicationArea = All; }
-                field("Gripper Edge Side"; Rec."Gripper Edge Side") { ApplicationArea = All; }
-                field("Sheets Per Hour"; Rec."Sheets Per Hour") { ApplicationArea = All; }
+                ApplicationArea = All;
+                Caption = 'Imposition';
+                SubPageLink = "Cost Center Code" = field(Code);
             }
         }
     }

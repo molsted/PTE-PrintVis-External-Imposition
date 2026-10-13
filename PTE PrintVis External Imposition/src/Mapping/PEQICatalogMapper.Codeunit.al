@@ -118,7 +118,7 @@ codeunit 50537 "PEQI Catalog Mapper"
     /// PRESS_MARGIN_EDGE_UNREADABLE.
     /// </para>
     /// <para>
-    /// Our own "Side Lay Edge" stays as an override, for a press whose configuration is wrong or
+    /// The configuration's own "Side Lay Edge" stays as an override, for a press whose configuration is wrong or
     /// silent. It is checked first for that reason, and is blank by default.
     /// </para>
     /// <para>
@@ -128,10 +128,10 @@ codeunit 50537 "PEQI Catalog Mapper"
     /// treat the margins symmetrically.
     /// </para>
     /// </remarks>
-    local procedure SideLayEdge(PressSetup: Record "PEQI Press Setup"; Config: Record "PVS Cost Center Configuration"): Text
+    local procedure SideLayEdge(Config: Record "PVS Cost Center Configuration"): Text
     begin
-        if PressSetup."Side Lay Edge" <> PressSetup."Side Lay Edge"::" " then
-            exit(EnumNames.PressEdge(PressSetup."Side Lay Edge"));
+        if Config."PEQI Side Lay Edge" <> Config."PEQI Side Lay Edge"::" " then
+            exit(EnumNames.PressEdge(Config."PEQI Side Lay Edge"));
 
         case Config."Pull Side" of
             Config."Pull Side"::Left:
@@ -143,94 +143,114 @@ codeunit 50537 "PEQI Catalog Mapper"
         exit('');
     end;
 
-    /// <summary>The press half. The measurements come from PrintVis's cost centre
-    /// configuration; the edges, the image area and the work styles come from our
-    /// setup, because PrintVis does not record them.</summary>
+    /// <summary>The press half: each cost center configuration marked for imposition. The mapping
+    /// is unchanged from when these settings lived in a table of our own.</summary>
     procedure BuildPresses() Presses: JsonArray
     var
-        PressSetup: Record "PEQI Press Setup";
         Config: Record "PVS Cost Center Configuration";
         Press: JsonObject;
         SideLay: Text;
     begin
-        PressSetup.SetRange("Use for Imposition", true);
-        if not PressSetup.FindSet() then
+        Config.SetRange("PEQI Use for Imposition", true);
+        if not Config.FindSet() then
             exit;
 
         repeat
             Clear(Press);
-            if not Config.Get(PressSetup."Cost Center Code", PressSetup.Configuration) then
-                Clear(Config);
-
-            JsonHelper.AddText(Press, 'id', GuidText(PressSetup."Press Id"));
-            JsonHelper.AddText(Press, 'name', PressName(PressSetup, Config));
-            JsonHelper.AddText(Press, 'type', EnumNames.PressType(PressType(PressSetup, Config)));
+            JsonHelper.AddText(Press, 'id', GuidText(Config."PEQI Press Id"));
+            JsonHelper.AddText(Press, 'name', PressName(Config));
+            JsonHelper.AddText(Press, 'type', EnumNames.PressType(PressType(Config)));
+            if (PressType(Config) = "PEQI Press Type"::Digital) and (Config."PEQI Digital Subtype" <> Config."PEQI Digital Subtype"::" ") then
+                JsonHelper.AddText(Press, 'digitalType', DigitalSubtype(Config."PEQI Digital Subtype"));
 
             JsonHelper.AddDecimal(Press, 'maxSheetWidthMm', Units.FormatToMm(Config."Max Printing Format Width"));
             JsonHelper.AddDecimal(Press, 'maxSheetHeightMm', Units.FormatToMm(Config."Max Printing Format Length"));
             JsonHelper.AddDecimalIfSet(Press, 'minSheetWidthMm', Units.FormatToMm(Config."Min Print Format Width"));
             JsonHelper.AddDecimalIfSet(Press, 'minSheetHeightMm', Units.FormatToMm(Config."Min Print Format Length"));
 
-            JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginTopMm', PressSetup."Non-Printable Top (mm)");
-            JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginBottomMm', PressSetup."Non-Printable Bottom (mm)");
-            JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginLeftMm', PressSetup."Non-Printable Left (mm)");
-            JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginRightMm', PressSetup."Non-Printable Right (mm)");
+            JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginTopMm', Units.MarginToMm(Config."PEQI Non-Printable Top"));
+            JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginBottomMm', Units.MarginToMm(Config."PEQI Non-Printable Bottom"));
+            JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginLeftMm', Units.MarginToMm(Config."PEQI Non-Printable Left"));
+            JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginRightMm', Units.MarginToMm(Config."PEQI Non-Printable Right"));
 
             JsonHelper.AddDecimalIfSet(Press, 'gripperMarginMm', Units.MarginToMm(Config."Gripper Edge"));
-            if PressSetup."Gripper Edge Side" <> PressSetup."Gripper Edge Side"::" " then
-                JsonHelper.AddText(Press, 'gripperEdge', EnumNames.PressEdge(PressSetup."Gripper Edge Side"));
+            if Config."PEQI Gripper Edge Side" <> Config."PEQI Gripper Edge Side"::" " then
+                JsonHelper.AddText(Press, 'gripperEdge', EnumNames.PressEdge(Config."PEQI Gripper Edge Side"));
             JsonHelper.AddDecimalIfSet(Press, 'sideLayMarginMm', Units.MarginToMm(Config.Pull));
-            SideLay := SideLayEdge(PressSetup, Config);
+            SideLay := SideLayEdge(Config);
             if SideLay <> '' then
                 JsonHelper.AddText(Press, 'sideLayEdge', SideLay);
+            JsonHelper.AddDecimalIfSet(Press, 'trailingMarginMm', Units.MarginToMm(Config."PEQI Trailing Margin"));
 
             // Both image-area bounds are needed for either to apply.
-            if (PressSetup."Max Image Area Width (mm)" <> 0) and (PressSetup."Max Image Area Height (mm)" <> 0) then begin
-                JsonHelper.AddDecimal(Press, 'maxImageAreaWidthMm', PressSetup."Max Image Area Width (mm)");
-                JsonHelper.AddDecimal(Press, 'maxImageAreaHeightMm', PressSetup."Max Image Area Height (mm)");
+            if (Config."PEQI Max Image Area Width" <> 0) and (Config."PEQI Max Image Area Height" <> 0) then begin
+                JsonHelper.AddDecimal(Press, 'maxImageAreaWidthMm', Units.FormatToMm(Config."PEQI Max Image Area Width"));
+                JsonHelper.AddDecimal(Press, 'maxImageAreaHeightMm', Units.FormatToMm(Config."PEQI Max Image Area Height"));
             end;
 
             JsonHelper.AddIntegerIfSet(Press, 'maxColorCount', Config."Max No. Of Colors");
             JsonHelper.AddBoolean(Press, 'supportsDoubleSided', Config."Perfection Printing");
             if Config."Perfection Printing" then
                 JsonHelper.AddText(Press, 'printingType', 'Perfector');
-            JsonHelper.AddIntegerIfSet(Press, 'sheetsPerHour', PressSetup."Sheets Per Hour");
+            JsonHelper.AddIntegerIfSet(Press, 'sheetsPerHour', Config."PEQI Sheets Per Hour");
+
+            // PrintVis records the weights a press takes; read, not re-entered. A basis-less weight
+            // unit is quoted over the press's own maximum sheet.
+            JsonHelper.AddIntegerIfSet(Press, 'minGrammageGsm', Round(Units.WeightToGsm(Config."Min Weight", Config."Weight Unit",
+                Config."Max Printing Format Width", Config."Max Printing Format Length"), 1, '='));
+            JsonHelper.AddIntegerIfSet(Press, 'maxGrammageGsm', Round(Units.WeightToGsm(Config."Max Weight", Config."Weight Unit",
+                Config."Max Printing Format Width", Config."Max Printing Format Length"), 1, '='));
 
             JsonHelper.AddText(Press, 'plateName', Config."Plate No.");
             JsonHelper.AddDecimalIfSet(Press, 'plateWidthMm', Units.FormatToMm(Config."Plate Width"));
             JsonHelper.AddDecimalIfSet(Press, 'plateHeightMm', Units.FormatToMm(Config."Plate Length"));
-            JsonHelper.AddDecimalIfSet(Press, 'platePunchMm', PressSetup."Plate Punch (mm)");
+            JsonHelper.AddDecimalIfSet(Press, 'platePunchMm', Units.MarginToMm(Config."PEQI Plate Punch"));
 
-            Press.Add('workStyles', WorkStyles(PressSetup));
+            if Config."PEQI Make" <> '' then
+                JsonHelper.AddText(Press, 'make', Config."PEQI Make");
+            if Config."PEQI Model" <> '' then
+                JsonHelper.AddText(Press, 'model', Config."PEQI Model");
+
+            Press.Add('workStyles', WorkStyles(Config));
             Presses.Add(Press);
-        until PressSetup.Next() = 0;
+        until Config.Next() = 0;
     end;
 
-    local procedure WorkStyles(PressSetup: Record "PEQI Press Setup") Styles: JsonArray
+    local procedure WorkStyles(Config: Record "PVS Cost Center Configuration") Styles: JsonArray
     var
         Style: Text;
     begin
-        foreach Style in PressSetup.WorkStyleList() do
+        foreach Style in Config.PEQIWorkStyleList() do
             Styles.Add(Style);
     end;
 
-    local procedure PressName(PressSetup: Record "PEQI Press Setup"; Config: Record "PVS Cost Center Configuration"): Text
+    local procedure PressName(Config: Record "PVS Cost Center Configuration"): Text
     begin
         if Config.Name <> '' then
             exit(Config.Name);
-        exit(PressSetup."Cost Center Code");
+        exit(Config."Cost Center Code");
     end;
 
-    local procedure PressType(PressSetup: Record "PEQI Press Setup"; Config: Record "PVS Cost Center Configuration"): Enum "PEQI Press Type"
+    local procedure PressType(Config: Record "PVS Cost Center Configuration"): Enum "PEQI Press Type"
     begin
-        if PressSetup."Use Press Type Override" then
-            exit(PressSetup."Press Type Override");
-        // Printing Machine is the field that names the press technology and has
-        // an explicit Digital member. Imaging describes proofing and platesetting,
-        // so a platesetter-driven offset press reads as Digital there.
+        if Config."PEQI Use Press Type Override" then
+            exit(Config."PEQI Press Type Override");
+        // Printing Machine is the field that names the press technology and has an explicit
+        // Digital member. Imaging describes proofing and platesetting.
         if Config."Printing Machine" = Config."Printing Machine"::Digital then
             exit("PEQI Press Type"::Digital);
         exit("PEQI Press Type"::Offset);
+    end;
+
+    local procedure DigitalSubtype(Value: Enum "PEQI Digital Subtype"): Text
+    begin
+        case Value of
+            Value::Toner:
+                exit('Toner');
+            Value::Inkjet:
+                exit('Inkjet');
+        end;
+        exit('');
     end;
 
     local procedure GuidText(Value: Guid): Text

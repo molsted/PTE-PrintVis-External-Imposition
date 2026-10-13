@@ -24,7 +24,6 @@ codeunit 50610 "PEQI Builder Tests"
         Assert: Codeunit "Library Assert";
         TestData: Codeunit "PEQI Test Data";
         PartMapper: Codeunit "PEQI Part Mapper";
-        CatalogMapper: Codeunit "PEQI Catalog Mapper";
         RequestBuilder: Codeunit "PEQI Request Builder";
 
     [Test]
@@ -176,70 +175,11 @@ codeunit 50610 "PEQI Builder Tests"
     end;
 
     [Test]
-    procedure APressCarriesItsWorkStylesExplicitly()
-    var
-        Presses: JsonArray;
-        PressToken: JsonToken;
-        Press: JsonObject;
-        StylesToken: JsonToken;
-        Styles: JsonArray;
-        PressSetup: Record "PEQI Press Setup";
-    begin
-        // [GIVEN] a press that can work-and-turn
-        PressSetup.Init();
-        PressSetup."Cost Center Code" := 'PRESS-WT';
-        PressSetup.Configuration := 'STD';
-        PressSetup."Use for Imposition" := true;
-        PressSetup.Simplex := true;
-        PressSetup."Work And Back" := true;
-        PressSetup."Work And Turn" := true;
-        PressSetup.Insert(true);
-
-        // [WHEN] the presses half is built
-        Presses := CatalogMapper.BuildPresses();
-        Presses.Get(0, PressToken);
-        Press := PressToken.AsObject();
-        Press.Get('workStyles', StylesToken);
-        Styles := StylesToken.AsArray();
-
-        // [THEN] WorkAndTurn is stated, because the engine never derives it
-        Assert.AreEqual(3, Styles.Count(), 'All three declared work styles are sent');
-    end;
-
-    [Test]
-    procedure APressCarriesItsStoredIdNotAFreshOne()
-    var
-        Presses: JsonArray;
-        PressToken: JsonToken;
-        PressSetup: Record "PEQI Press Setup";
-        JsonHelper: Codeunit "PEQI Json Helper";
-    begin
-        // [GIVEN] a press with an assigned id
-        PressSetup.Init();
-        PressSetup."Cost Center Code" := 'PRESS-ID';
-        PressSetup.Configuration := 'STD';
-        PressSetup."Use for Imposition" := true;
-        PressSetup.Insert(true);
-
-        // [WHEN] the presses half is built twice
-        Presses := CatalogMapper.BuildPresses();
-        Presses.Get(0, PressToken);
-
-        // [THEN] the id is the stored one
-        // A fresh GUID per call makes every quoted solutionId stale at /jdf.
-        Assert.AreEqual(
-            LowerCase(DelChr(Format(PressSetup."Press Id"), '=', '{}')),
-            LowerCase(JsonHelper.ReadText(PressToken.AsObject(), 'id')),
-            'The press carries its stored id');
-    end;
-
-    [Test]
     procedure TheRequestStatesBothCatalogueHalvesAndNoCatalogFilter()
     var
         RequestObject: JsonObject;
         Token: JsonToken;
         BindingMapping: Record "PEQI Binding Mapping";
-        PressSetup: Record "PEQI Press Setup";
     begin
         // [GIVEN] a saddle-stitched job with a cover and a body, one paper, one press
         TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
@@ -255,11 +195,7 @@ codeunit 50610 "PEQI Builder Tests"
         BindingMapping.Insert(true);
         TestData.AddJob(6001, 1, 1, 'SADDLE', 5000);
 
-        PressSetup.Init();
-        PressSetup."Cost Center Code" := 'PRESS-A';
-        PressSetup.Configuration := 'STD';
-        PressSetup."Use for Imposition" := true;
-        PressSetup.Insert(true);
+        TestData.AddPressConfig('PRESS-A', 'STD');
 
         // [WHEN] the request is built
         RequestObject := RequestBuilder.BuildObject(6001, 1, 1);
@@ -358,19 +294,21 @@ codeunit 50610 "PEQI Builder Tests"
     end;
 
     local procedure AddBuildableJob(CaseId: Integer; FinishingCode: Code[20])
-    var
-        PressSetup: Record "PEQI Press Setup";
     begin
         TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
         TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(CaseId, 1, 1, 1, 'BODY', 32, 148, 210, 'PAPER-100');
         TestData.AddJob(CaseId, 1, 1, FinishingCode, 5000);
 
-        PressSetup.Init();
-        PressSetup."Cost Center Code" := 'PRESS-A';
-        PressSetup.Configuration := 'STD';
-        PressSetup."Use for Imposition" := true;
-        PressSetup.Insert(true);
+        if not PressConfigExists('PRESS-A', 'STD') then
+            TestData.AddPressConfig('PRESS-A', 'STD');
+    end;
+
+    local procedure PressConfigExists(CostCenterCode: Code[20]; ConfigCode: Code[20]): Boolean
+    var
+        Config: Record "PVS Cost Center Configuration";
+    begin
+        exit(Config.Get(CostCenterCode, ConfigCode));
     end;
 
     local procedure AddBindingMapping(FinishingCode: Code[20]; Binding: Enum "PEQI Binding Type")

@@ -172,4 +172,28 @@ codeunit 50602 "PEQI Test Data"
             exit;
         JobSheet.Modify(false);
     end;
+
+    /// <summary>A cost center configuration marked for imposition, with a format and the two
+    /// work styles most presses run. Inserted without PrintVis's triggers.</summary>
+    procedure AddPressConfig(CostCenterCode: Code[20]; ConfigCode: Code[20])
+    var
+        CostCenter: Record "PVS Cost Center";
+        Config: Record "PVS Cost Center Configuration";
+    begin
+        if not CostCenter.Get(CostCenterCode) then begin
+            CostCenter.Init();
+            CostCenter.Code := CostCenterCode;
+            CostCenter.Insert(false);
+        end;
+        Config.Init();
+        Config."Cost Center Code" := CostCenterCode;
+        Config.Configuration := ConfigCode;
+        Config."Max Printing Format Width" := 1000;
+        Config."Max Printing Format Length" := 700;
+        Config."PEQI Simplex" := true;
+        Config."PEQI Work And Back" := true;
+        Config.Insert(false);
+        Config.Validate("PEQI Use for Imposition", true);
+        Config.Modify(false);
+    end;
 }
