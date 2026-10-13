@@ -127,6 +127,11 @@ page 50517 "PEQI Imposition Job Card"
                 Caption = 'View Request';
                 Image = ViewDetails;
                 ToolTip = 'Shows the JSON that was or will be sent to the engine.';
+                // An administrator's diagnostic, not a planner's tool: the raw request is the whole
+                // inline catalogue as JSON. Shown to the same users who are offered the full editor --
+                // write access to "PEQI Paper Setup", which only "PEQI Imp. Setup" grants -- so the two
+                // cannot drift apart.
+                AccessByPermission = tabledata "PEQI Paper Setup" = M;
 
                 trigger OnAction()
                 begin
