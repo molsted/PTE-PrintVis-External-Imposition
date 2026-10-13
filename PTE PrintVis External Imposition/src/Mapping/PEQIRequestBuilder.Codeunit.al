@@ -73,17 +73,17 @@ codeunit 50535 "PEQI Request Builder"
     /// <remarks>
     /// <para>
     /// Lives here rather than on the page because a page's local procedure cannot be tested, and
-    /// this one decides which editor the operator is given - the slim approve screen or the full
-    /// editor. It is not a security boundary on what Business Central accepts back:
+    /// this one decides whether the operator is offered the full editor beside the simple view
+    /// every session starts on. It is not a security boundary on what Business Central accepts back:
     /// "PEQI Commit Manager".StoreChoice stores whatever request comes back regardless of mode.
     /// </para>
     /// <para>
     /// <b>Do not give this codeunit a <c>Permissions</c> property that covers "PEQI Paper
     /// Setup".</b> Inherent permissions would make <c>WritePermission()</c> report true for every
-    /// user, and every user would get the full editor - the check would fail open.
+    /// user, and every user would be offered the full editor - the check would fail open.
     /// </para>
     /// <para>
-    /// <b>The mode is read off the permission sets themselves.</b> "PEQI Paper Setup" is R in
+    /// <b>Who may switch is read off the permission sets themselves.</b> "PEQI Paper Setup" is R in
     /// "PEQI Imposition" and RIMD in "PEQI Imp. Setup", so write access to it is exactly the
     /// difference between the two, and this cannot drift from them the way a separate flag or a
     /// third permission set would.
@@ -101,10 +101,10 @@ codeunit 50535 "PEQI Request Builder"
         // Echoed back on every result, and checked before anything is stored.
         Options.Add('entryKey', EntryKey);
 
-        if PaperSetup.WritePermission() then
-            Options.Add('mode', 'advanced')
-        else
-            Options.Add('mode', 'approve');
+        // Everyone starts on the simple view. Write access to "PEQI Paper Setup" -- which only
+        // "PEQI Imp. Setup" grants -- decides whether the editor also offers the full one.
+        Options.Add('mode', 'approve');
+        Options.Add('fullEditorAllowed', PaperSetup.WritePermission());
 
         Options.WriteTo(OptionsText);
         exit(OptionsText);

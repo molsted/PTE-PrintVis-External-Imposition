@@ -69,16 +69,20 @@ codeunit 50615 "PEQI Document Tests"
         RequestBuilder: Codeunit "PEQI Request Builder";
         Options: JsonObject;
         Token: JsonToken;
-        Mode: Text;
+        Allowed: Boolean;
     begin
         // [WHEN] the seed options are built for an entry
         Options.ReadFrom(RequestBuilder.SeedOptions('4711-1-1-1'));
 
-        // [THEN] they name a mode, and it is one of the two the editor knows
+        // [THEN] every operator starts on the simple view, whatever their permissions
         Assert.IsTrue(Options.Get('mode', Token), 'The seed states a mode');
-        Mode := Token.AsValue().AsText();
-        Assert.IsTrue((Mode = 'approve') or (Mode = 'advanced'),
-                      'The mode is one the editor knows, not ' + Mode);
+        Assert.AreEqual('approve', Token.AsValue().AsText(), 'Everyone starts on the simple view');
+
+        // [THEN] and the seed says, as a boolean, whether the full editor may be offered. Its value
+        // is the running user's own write access, which a test codeunit cannot vary, so only its
+        // presence and type are pinned here; AsBoolean errors on anything that is not one.
+        Assert.IsTrue(Options.Get('fullEditorAllowed', Token), 'The seed says whether the full editor is allowed');
+        Allowed := Token.AsValue().AsBoolean();
 
         // [THEN] and the entry key still rides along, because the editor echoes it back
         Assert.IsTrue(Options.Get('entryKey', Token), 'The seed carries the entry key');

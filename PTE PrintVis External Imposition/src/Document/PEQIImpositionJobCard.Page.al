@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------------------------
 // Copyright (c) 2026 Printers Equity. All rights reserved.
-//
+            //
 // This file, and all source code contained herein, is the exclusive property of Printers Equity
 // and is protected by copyright and other intellectual property laws. Except as expressly
 // permitted by a written agreement with Printers Equity, no part of this code may be used,
@@ -186,24 +186,28 @@ page 50517 "PEQI Imposition Job Card"
                 ToolTip = 'Shows the JDF tickets written from this imposition.';
             }
 
-            action(OpenEditorInBrowser)
-            {
-                ApplicationArea = All;
-                Caption = 'Open Editor in Browser';
-                Image = Web;
-                ToolTip = 'Opens the imposition editor in a browser tab. Use this when the embedded editor cannot load.';
-
-                trigger OnAction()
-                var
-                    Setup: Record "PEQI Imposition Setup";
-                    NoUrlErr: Label 'No editor URL is configured on the Imposition Setup page.';
-                begin
-                    Setup := Setup.GetSetup();
-                    if Setup."Spa Url" = '' then
-                        Error(NoUrlErr);
-                    Hyperlink(Setup."Spa Url");
-                end;
-            }
+            // Disabled while the popped-out editor is being decided on: see
+            // docs/superpowers/specs/2026-10-13-popped-out-editor-design.md in the editor repository.
+            // As written it only opened the bare editor URL -- no job, no seed, and no way to send a
+            // choice back -- so it opened the standalone wizard on an empty product, not this job.
+            // action(OpenEditorInBrowser)
+            // {
+            //     ApplicationArea = All;
+            //     Caption = 'Open Editor in Browser';
+            //     Image = Web;
+            //     ToolTip = 'Opens the imposition editor in a browser tab. Use this when the embedded editor cannot load.';
+            //
+            //     trigger OnAction()
+            //     var
+            //         Setup: Record "PEQI Imposition Setup";
+            //         NoUrlErr: Label 'No editor URL is configured on the Imposition Setup page.';
+            //     begin
+            //         Setup := Setup.GetSetup();
+            //         if Setup."Spa Url" = '' then
+            //             Error(NoUrlErr);
+            //         Hyperlink(Setup."Spa Url");
+            //     end;
+            // }
         }
     }
 
