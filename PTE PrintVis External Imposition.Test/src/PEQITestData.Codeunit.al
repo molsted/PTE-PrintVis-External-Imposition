@@ -200,7 +200,8 @@ codeunit 50602 "PEQI Test Data"
     end;
 
     /// <summary>A cost center configuration marked for imposition, with a format and the two
-    /// work styles most presses run. Inserted without PrintVis's triggers.</summary>
+    /// work styles most presses run. Inserted without PrintVis's triggers. Calling it twice for
+    /// the same configuration is safe.</summary>
     procedure AddPressConfig(CostCenterCode: Code[20]; ConfigCode: Code[20])
     var
         CostCenter: Record "PVS Cost Center";
@@ -211,6 +212,8 @@ codeunit 50602 "PEQI Test Data"
             CostCenter.Code := CostCenterCode;
             CostCenter.Insert(false);
         end;
+        if Config.Get(CostCenterCode, ConfigCode) then
+            exit;
         Config.Init();
         Config."Cost Center Code" := CostCenterCode;
         Config.Configuration := ConfigCode;

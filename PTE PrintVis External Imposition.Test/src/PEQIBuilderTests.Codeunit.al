@@ -221,6 +221,7 @@ codeunit 50610 "PEQI Builder Tests"
         TestData.AddJobItem(6002, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-90');
         TestData.AddFinishingType('SADDLE', 'SaddleStitch', '');
         TestData.AddJob(6002, 1, 1, 'SADDLE', 1000);
+        TestData.AddPressConfig('PRESS-A', 'STD');
 
         // [WHEN] the request is built twice
         First := RequestBuilder.Build(6002, 1, 1);
