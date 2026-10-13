@@ -46,7 +46,7 @@ codeunit 50545 "PEQI Unit Converter"
     begin
         if Value = 0 then
             exit(0);
-        exit(Round(Value * UnitConversion.Format2Micrometer() / 1000, 0.01, '='));
+        exit(RoundLength(Value * UnitConversion.Format2Micrometer() / 1000));
     end;
 
     /// <summary>A gripper, pull, trim or overfold, in millimetres.</summary>
@@ -58,8 +58,114 @@ codeunit 50545 "PEQI Unit Converter"
     begin
         if Value = 0 then
             exit(0);
-        exit(Round(Value * UnitConversion.Margin2Micrometer() / 1000, 0.01, '='));
+        exit(RoundLength(Value * UnitConversion.Margin2Micrometer() / 1000));
     end;
+
+    /// <summary>A length in millimetres, to the precision it is sent to the engine at.</summary>
+    /// <remarks>
+    /// 0.0001 mm, not the 0.01 mm this used to be. The engine holds lengths as points in double
+    /// precision, so BC's rounding was the only lossy step: at 0.01 mm, 1/16 in (1.5875 mm) went
+    /// out as 1.59. At 0.0001 mm every length an inch, centimetre or millimetre installation can
+    /// state arrives exactly, since 1 in is 25.4 mm by definition.
+    /// </remarks>
+    procedure RoundLength(Value: Decimal): Decimal
+    begin
+        exit(Round(Value, 0.0001, '='));
+    end;
+
+    /// <summary>The symbol for a PrintVis unit, from its size in microns.</summary>
+    /// <remarks>
+    /// From the factor, not from a description: a description is text in whatever language the
+    /// installation was set up in, and the factor is the same number the conversions use, so the
+    /// label and the arithmetic cannot disagree. Blank for a factor that is none of the three.
+    /// </remarks>
+    procedure UnitSymbolForFactor(MicronsPerUnit: Decimal): Text
+    begin
+        case MicronsPerUnit of
+            1000:
+                exit('mm');
+            10000:
+                exit('cm');
+            25400:
+                exit('in');
+        end;
+        exit('');
+    end;
+
+    /// <summary>The unit as the editor spells it, from its size in microns.</summary>
+    procedure DisplayUnitsForFactor(MicronsPerUnit: Decimal): Text
+    begin
+        case MicronsPerUnit of
+            1000:
+                exit('mm');
+            10000:
+                exit('cm');
+            25400:
+                exit('inch');
+        end;
+        exit('');
+    end;
+
+    /// <summary>A literal CaptionClass for a caption with its unit in brackets.</summary>
+    procedure CaptionWithUnit(BaseCaption: Text; Symbol: Text): Text
+    begin
+        if Symbol = '' then
+            exit('3,' + BaseCaption);
+        exit('3,' + BaseCaption + ' (' + Symbol + ')');
+    end;
+
+    /// <summary>The installation's format unit, for labels.</summary>
+    procedure FormatUnitSymbol(): Text
+    var
+        Symbol: Text;
+    begin
+        Symbol := UnitSymbolForFactor(UnitConversion.Format2Micrometer());
+        if Symbol <> '' then
+            exit(Symbol);
+        exit(StandardUnitDescription(0));
+    end;
+
+    /// <summary>The installation's margin unit, for labels.</summary>
+    procedure MarginUnitSymbol(): Text
+    var
+        Symbol: Text;
+    begin
+        Symbol := UnitSymbolForFactor(UnitConversion.Margin2Micrometer());
+        if Symbol <> '' then
+            exit(Symbol);
+        exit(StandardUnitDescription(1));
+    end;
+
+    /// <summary>A CaptionClass for a field measured in the format unit.</summary>
+    procedure FormatCaptionClass(BaseCaption: Text): Text
+    begin
+        exit(CaptionWithUnit(BaseCaption, FormatUnitSymbol()));
+    end;
+
+    /// <summary>A CaptionClass for a field measured in the margin unit.</summary>
+    procedure MarginCaptionClass(BaseCaption: Text): Text
+    begin
+        exit(CaptionWithUnit(BaseCaption, MarginUnitSymbol()));
+    end;
+
+    /// <summary>The installation's format unit as the editor spells it; blank if unknown.</summary>
+    procedure FormatDisplayUnits(): Text
+    begin
+        exit(DisplayUnitsForFactor(UnitConversion.Format2Micrometer()));
+    end;
+
+    /// <summary>PrintVis's own description of a standard unit, when the factor is unfamiliar.</summary>
+    /// <remarks>Ordinal 0 is the Format row and 1 the Margins row of PVS Standard Units.Type.</remarks>
+    local procedure StandardUnitDescription(TypeOrdinal: Integer): Text
+    var
+        StandardUnit: Record "PVS Standard Units";
+    begin
+        StandardUnit.SetRange(Type, TypeOrdinal);
+        if StandardUnit.FindFirst() then
+            exit(StandardUnit.Description);
+        exit('');
+    end;
+
 
     /// <summary>The thinnest caliper, in microns, that could be a sheet of paper.</summary>
     /// <remarks>
@@ -113,21 +219,27 @@ codeunit 50545 "PEQI Unit Converter"
     /// </para>
     /// </remarks>
     procedure ThicknessToMicrons(Item: Record Item): Decimal
+    begin
+        exit(ThicknessToMicrons(Item."PVS Thickness", Item."PVS Weight", Item."PVS Weight Unit"));
+    end;
+
+    /// <summary>The same reading, from a thickness and weight held anywhere — a job sheet's own.</summary>
+    procedure ThicknessToMicrons(Thickness: Decimal; Weight: Decimal; WeightUnitCode: Code[10]): Decimal
     var
         ByUnit: Decimal;
         AsFormatUnits: Decimal;
         Caliper: Decimal;
     begin
-        if Item."PVS Thickness" = 0 then
+        if Thickness = 0 then
             exit(0);
 
-        Caliper := UnitConversion.Caliper2Format(Item."PVS Weight", Item."PVS Weight Unit");
-        ByUnit := Item."PVS Thickness" * Caliper * UnitConversion.Format2Micrometer();
+        Caliper := UnitConversion.Caliper2Format(Weight, WeightUnitCode);
+        ByUnit := Thickness * Caliper * UnitConversion.Format2Micrometer();
         if ByUnit >= MinPlausibleMicrons() then
             exit(Round(ByUnit, 0.01, '='));
 
         // Read as though the stored value were already in format units.
-        AsFormatUnits := Item."PVS Thickness" * UnitConversion.Format2Micrometer();
+        AsFormatUnits := Thickness * UnitConversion.Format2Micrometer();
         if AsFormatUnits >= MinPlausibleMicrons() then
             exit(Round(AsFormatUnits, 0.01, '='));
 
@@ -166,25 +278,32 @@ codeunit 50545 "PEQI Unit Converter"
     /// </para>
     /// </remarks>
     procedure WeightToGsm(Item: Record Item): Decimal
+    begin
+        exit(WeightToGsm(Item."PVS Weight", Item."PVS Weight Unit", Item."PVS Format 1", Item."PVS Format 2"));
+    end;
+
+    /// <summary>The same conversion, from a weight held anywhere. Format1/Format2 are the sheet a
+    /// basis-less weight unit is quoted over — the purchased sheet.</summary>
+    procedure WeightToGsm(Weight: Decimal; WeightUnitCode: Code[10]; Format1: Decimal; Format2: Decimal): Decimal
     var
         WeightUnit: Record "PVS Standard Units";
         AreaSqM: Decimal;
     begin
-        if Item."PVS Weight" = 0 then
+        if Weight = 0 then
             exit(0);
-        if not WeightUnit.Get(WeightUnit.Type::"Paper weight", Item."PVS Weight Unit") then
+        if not WeightUnit.Get(WeightUnit.Type::"Paper weight", WeightUnitCode) then
             exit(0);
 
-        // A row with no basis size quotes the weight over the paper''s own sheet.
+        // A row with no basis size quotes the weight over the paper's own sheet.
         if WeightUnit."Format 1" = 0 then
-            AreaSqM := WeightUnit.Quantity * SquareMetres(Item."PVS Format 1", Item."PVS Format 2")
+            AreaSqM := WeightUnit.Quantity * SquareMetres(Format1, Format2)
         else
             AreaSqM := WeightUnit.Quantity * SquareMetres(WeightUnit."Format 1", WeightUnit."Format 2");
 
         if AreaSqM = 0 then
             exit(0);
 
-        exit(Round(Item."PVS Weight" * GramsPerWeightUnit() / AreaSqM, 0.01, '='));
+        exit(Round(Weight * GramsPerWeightUnit() / AreaSqM, 0.01, '='));
     end;
 
     /// <summary>Two format measurements as an area in square metres.</summary>
