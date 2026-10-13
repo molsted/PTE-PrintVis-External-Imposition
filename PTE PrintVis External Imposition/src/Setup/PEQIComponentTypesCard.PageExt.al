@@ -10,23 +10,16 @@
 
 namespace PrintersEquity.ExternalImposition.Setup;
 
-page 50515 "PEQI Part Mappings"
+pageextension 50573 "PEQI Component Types Card" extends "PVS Component Types Card"
 {
-    Caption = 'Imposition Part Mappings';
-    PageType = List;
-    ApplicationArea = All;
-    UsageCategory = Administration;
-    SourceTable = "PEQI Part Mapping";
-
     layout
     {
-        area(Content)
+        addlast(General)
         {
-            repeater(Rows)
+            field("PEQI Grain Rule"; Rec."PEQI Grain Rule")
             {
-                field("Component Type"; Rec."Component Type") { ApplicationArea = All; }
-                field("Product Type"; Rec."Product Type") { ApplicationArea = All; }
-                field("Grain Rule"; Rec."Grain Rule") { ApplicationArea = All; }
+                ApplicationArea = All;
+                ToolTip = 'Whether this component''s grain must run parallel to the spine when imposed. A job using a component type still Not set is refused until it is chosen.';
             }
         }
     }

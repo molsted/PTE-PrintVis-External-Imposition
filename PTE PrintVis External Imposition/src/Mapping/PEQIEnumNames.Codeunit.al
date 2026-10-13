@@ -44,7 +44,7 @@ codeunit 50546 "PEQI Enum Names"
     var
         BindingUnsupportedErr: Label 'The engine cannot impose %1 binding. It handles saddle stitch, perfect bound and unbound work; anything else has to be imposed by hand.', Comment = '%1 the binding name';
         BindingSideUnsupportedErr: Label 'The engine cannot bind on the %1 edge. It binds left, right or top.', Comment = '%1 the edge name';
-        GrainRuleUnsupportedErr: Label 'The engine has no %1 grain rule. It offers parallel to the spine, parallel to the fold, parallel to the long edge, or none.', Comment = '%1 the grain rule name';
+        GrainNotSetErr: Label 'Component type %1 has no imposition grain rule. Set it on the component type card.', Comment = '%1 component type';
 
     /// <summary>BindingType: None, SaddleStitch, PerfectBound.</summary>
     procedure Binding(Value: Enum "PEQI Binding Type"): Text
@@ -100,39 +100,34 @@ codeunit 50546 "PEQI Enum Names"
         exit('Preferred');
     end;
 
-    /// <summary>GrainRule: ParallelToSpine, ParallelToFold, ParallelToLongEdge, Free.</summary>
-    procedure GrainRule(Value: Enum "PEQI Grain Rule"): Text
+    /// <summary>An option field's member name -- never its caption.</summary>
+    /// <remarks>
+    /// Format() on an option returns its caption, which follows the user's language: a Danish
+    /// session would send a Danish word. OptionMembers is the declared name list, untranslated,
+    /// indexed by the option's ordinal.
+    /// </remarks>
+    procedure OptionMemberName(RecVariant: Variant; FieldNo: Integer): Text
+    var
+        RecRef: RecordRef;
+        FldRef: FieldRef;
+        Ordinal: Integer;
+    begin
+        RecRef.GetTable(RecVariant);
+        FldRef := RecRef.Field(FieldNo);
+        Ordinal := FldRef.Value;
+        exit(SelectStr(Ordinal + 1, FldRef.OptionMembers()));
+    end;
+
+    /// <summary>GrainRule: ParallelToSpine, Free. A rule nobody has chosen is refused by name.</summary>
+    procedure ComponentGrainRule(Value: Enum "PEQI Component Grain Rule"; ComponentTypeCode: Code[20]): Text
     begin
         case Value of
             Value::Any:
                 exit('Free');
             Value::ParallelToSpine:
                 exit('ParallelToSpine');
-            // There is no perpendicular rule. Mapping it to ParallelToSpine would assert the
-            // exact opposite of what the operator chose.
-            Value::PerpendicularToSpine:
-                Error(GrainRuleUnsupportedErr, 'perpendicular to spine');
         end;
-        exit('Free');
-    end;
-
-    /// <summary>JdfProductType, as the engine's part-types endpoint lists them.</summary>
-    procedure ProductType(Value: Enum "PEQI Part Product Type"): Text
-    begin
-        case Value of
-            Value::Body:
-                exit('Body');
-            Value::Cover:
-                exit('Cover');
-            Value::Insert:
-                exit('Insert');
-            Value::Jacket:
-                exit('Jacket');
-            // Ours is called Flat; the engine's word is FlatWork.
-            Value::Flat:
-                exit('FlatWork');
-        end;
-        exit('Body');
+        Error(GrainNotSetErr, ComponentTypeCode);
     end;
 
     /// <summary>JobType: Digital, Offset.</summary>

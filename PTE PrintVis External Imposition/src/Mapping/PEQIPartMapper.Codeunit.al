@@ -19,7 +19,8 @@ codeunit 50536 "PEQI Part Mapper"
         Units: Codeunit "PEQI Unit Converter";
         EnumNames: Codeunit "PEQI Enum Names";
         SheetReader: Codeunit "PEQI Job Sheet Reader";
-        NoMappingErr: Label 'Component type %1 on job %2/%3/%4 has no imposition part mapping. Add it on the Imposition Part Mappings page.', Comment = '%1 component type, %2 case, %3 job, %4 version';
+        NoComponentTypeErr: Label 'Component type %1 does not exist in PrintVis.', Comment = '%1 component type';
+        NoProductTypeErr: Label 'Component type %1 has no JDF Product Type. Set it on the component type card.', Comment = '%1 component type';
         PaperClashErr: Label 'Component %1 spans two sheets: job item %2 runs on %3 and job item %4 runs on %5, at a different paper or printing format. A part is imposed on one stock.', Comment = '%1 component, %2 %4 job item nos, %3 %5 paper item nos';
         FormatClashErr: Label 'Component %1 spans two trim formats: job item %2 is %3 x %4 and job item %5 is %6 x %7.', Comment = '%1 component, %2 %5 job item nos, %3 %4 %6 %7 dimensions';
         NoComponentsErr: Label 'Job %1/%2/%3 has no job items, so there is nothing to impose.', Comment = '%1 case, %2 job, %3 version';
@@ -69,16 +70,20 @@ codeunit 50536 "PEQI Part Mapper"
     local procedure BuildOnePart(CaseId: Integer; JobNo: Integer; VersionNo: Integer; ComponentType: Code[20]) Part: JsonObject
     var
         JobItem: Record "PVS Job Item";
-        PartMapping: Record "PEQI Part Mapping";
+        ComponentTypeRec: Record "PVS Component Types";
         FirstItem: Record "PVS Job Item";
+        ProductType: Text;
         FirstSubstrate: Integer;
         ItemSubstrate: Integer;
         TotalPages: Integer;
         FrontColors: Integer;
         BackColors: Integer;
     begin
-        if not PartMapping.Get(ComponentType) then
-            Error(NoMappingErr, ComponentType, CaseId, JobNo, VersionNo);
+        if not ComponentTypeRec.Get(ComponentType) then
+            Error(NoComponentTypeErr, ComponentType);
+        ProductType := EnumNames.OptionMemberName(ComponentTypeRec, ComponentTypeRec.FieldNo("JDF Product Type"));
+        if ProductType = 'Unknown' then
+            Error(NoProductTypeErr, ComponentType);
 
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
@@ -111,13 +116,13 @@ codeunit 50536 "PEQI Part Mapper"
         until JobItem.Next() = 0;
 
         JsonHelper.AddText(Part, 'name', ComponentType);
-        JsonHelper.AddText(Part, 'productType', EnumNames.ProductType(PartMapping."Product Type"));
+        JsonHelper.AddText(Part, 'productType', ProductType);
         JsonHelper.AddInteger(Part, 'pageCount', TotalPages);
         // The finished page, in the installation's unit. Same conversion as the sheets:
         // a trim and a sheet have to be in the same unit or nothing fits anything.
         JsonHelper.AddDecimal(Part, 'trimWidthMm', Units.FormatToMm(FirstItem.Width));
         JsonHelper.AddDecimal(Part, 'trimHeightMm', Units.FormatToMm(FirstItem.Length));
-        JsonHelper.AddText(Part, 'grainRule', EnumNames.GrainRule(PartMapping."Grain Rule"));
+        JsonHelper.AddText(Part, 'grainRule', EnumNames.ComponentGrainRule(ComponentTypeRec."PEQI Grain Rule", ComponentType));
         JsonHelper.AddInteger(Part, 'frontColors', FrontColors);
         JsonHelper.AddInteger(Part, 'backColors', BackColors);
         Part.Add('catalog', BuildPartCatalog(FirstSubstrate));

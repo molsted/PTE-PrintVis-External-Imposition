@@ -55,24 +55,6 @@ enum 50556 "PEQI Binding Side"
     value(3; Bottom) { Caption = 'Bottom'; }
 }
 
-enum 50557 "PEQI Part Product Type"
-{
-    Extensible = false;
-    value(0; Body) { Caption = 'Body'; }
-    value(1; Cover) { Caption = 'Cover'; }
-    value(2; Insert) { Caption = 'Insert'; }
-    value(3; Jacket) { Caption = 'Jacket'; }
-    value(4; Flat) { Caption = 'Flat'; }
-}
-
-enum 50558 "PEQI Grain Rule"
-{
-    Extensible = false;
-    value(0; Any) { Caption = 'Any'; }
-    value(1; ParallelToSpine) { Caption = 'Parallel to spine'; }
-    value(2; PerpendicularToSpine) { Caption = 'Perpendicular to spine'; }
-}
-
 enum 50559 "PEQI Grain Policy"
 {
     Extensible = false;
@@ -111,4 +93,18 @@ enum 50564 "PEQI Digital Subtype"
     value(0; " ") { Caption = ' '; }
     value(1; Toner) { Caption = 'Toner'; }
     value(2; Inkjet) { Caption = 'Inkjet'; }
+}
+
+/// <summary>Whether a component's grain must run parallel to the spine. "Not set" comes first on
+/// purpose: an extension field on rows that already exist takes the type's first value, so the
+/// first value has to mean "nobody has chosen" -- not Any, which would silently stop enforcing
+/// grain on every existing component type.</summary>
+enum 50554 "PEQI Component Grain Rule"
+{
+    Extensible = false;
+    Caption = 'Imposition Grain Rule';
+
+    value(0; NotSet) { Caption = 'Not set'; }
+    value(1; Any) { Caption = 'Any'; }
+    value(2; ParallelToSpine) { Caption = 'Parallel to spine'; }
 }

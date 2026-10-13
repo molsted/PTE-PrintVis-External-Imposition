@@ -33,7 +33,7 @@ codeunit 50617 "PEQI Sheet Tests"
     begin
         // [GIVEN] a job whose one job item sits on a sheet of PAPER-A
         TestData.AddPaperItem('PAPER-A', 'White Gloss');
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(8001, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
 
         // [WHEN] the sheets half is built
@@ -53,7 +53,7 @@ codeunit 50617 "PEQI Sheet Tests"
     begin
         // [GIVEN] three job items of one component, each on its own sheet of the same paper and format
         TestData.AddPaperItem('PAPER-A', 'White Gloss');
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(8002, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
         TestData.AddJobItem(8002, 1, 1, 2, 'BODY', 16, 210, 297, 'PAPER-A');
         TestData.AddJobItem(8002, 1, 1, 3, 'BODY', 16, 210, 297, 'PAPER-A');
@@ -76,8 +76,8 @@ codeunit 50617 "PEQI Sheet Tests"
     begin
         // [GIVEN] two components on the same paper at two printing formats
         TestData.AddPaperItem('PAPER-A', 'White Gloss');
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
+        TestData.AddComponentType('COVER', 'Cover', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(8003, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
         TestData.AddJobItem(8003, 1, 1, 2, 'COVER', 4, 430, 297, 'PAPER-A');
         TestData.SetSheetFormat(8003, 2, 720, 520);
@@ -96,7 +96,7 @@ codeunit 50617 "PEQI Sheet Tests"
     begin
         // [GIVEN] a sheet printed at its full purchased size, grain recorded as 1<2
         TestData.AddPaperItem('PAPER-A', 'White Gloss');
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(8004, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
         TestData.SetSheetFullFormat(8004, 1, 640, 450, false);
 
@@ -114,7 +114,7 @@ codeunit 50617 "PEQI Sheet Tests"
     begin
         // [GIVEN] the full sheet recorded 450 x 640 and printed as 640 x 450 -- the same sheet
         TestData.AddPaperItem('PAPER-A', 'White Gloss');
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(8005, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
         TestData.SetSheetFullFormat(8005, 1, 450, 640, true);
 
@@ -134,7 +134,7 @@ codeunit 50617 "PEQI Sheet Tests"
     begin
         // [GIVEN] a 640 x 450 printing format cut from a 1280 x 900 purchased sheet
         TestData.AddPaperItem('PAPER-A', 'White Gloss');
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(8006, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
         TestData.SetSheetFullFormat(8006, 1, 1280, 900, false);
 
@@ -156,7 +156,7 @@ codeunit 50617 "PEQI Sheet Tests"
     begin
         // [GIVEN] a printing format recorded short side first
         TestData.AddPaperItem('PAPER-A', 'White Gloss');
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(8007, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
         TestData.SetSheetFormat(8007, 1, 450, 640);
 
@@ -177,8 +177,8 @@ codeunit 50617 "PEQI Sheet Tests"
         // [GIVEN] two papers whose job items interleave: A, B, A
         TestData.AddPaperItem('PAPER-A', 'Paper A');
         TestData.AddPaperItem('PAPER-B', 'Paper B');
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
+        TestData.AddComponentType('COVER', 'Cover', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(8008, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
         TestData.AddJobItem(8008, 1, 1, 2, 'COVER', 4, 430, 297, 'PAPER-B');
         TestData.AddJobItem(8008, 1, 1, 3, 'BODY', 16, 210, 297, 'PAPER-A');

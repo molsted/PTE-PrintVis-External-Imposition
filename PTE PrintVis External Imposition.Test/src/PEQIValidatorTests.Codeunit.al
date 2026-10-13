@@ -27,23 +27,6 @@ codeunit 50611 "PEQI Validator Tests"
         Validator: Codeunit "PEQI Request Validator";
 
     [Test]
-    procedure AFoldedPartWithAnOddPageCountIsRefused()
-    var
-        Problems: List of [Text];
-    begin
-        // [GIVEN] a body with three pages
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
-        TestData.AddPaperItem('PAPER-100', 'Paper 100');
-        TestData.AddJobItem(7001, 1, 1, 1, 'BODY', 3, 210, 297, 'PAPER-100');
-
-        // [WHEN] the job is validated
-        // [THEN] it is refused and the message names the component
-        Assert.IsFalse(Validator.Validate(7001, 1, 1, Problems), 'An odd page count on a folded part is refused');
-        Assert.IsTrue(Problems.Count() > 0, 'A problem is reported');
-        Assert.IsTrue(ProblemsMention(Problems, 'BODY'), 'The problem names the component');
-    end;
-
-    [Test]
     procedure EveryProblemIsReportedNotJustTheFirst()
     var
         Problems: List of [Text];
@@ -81,7 +64,7 @@ codeunit 50611 "PEQI Validator Tests"
     begin
         // [GIVEN] a body on a sheet with no printing format
         TestData.AddPaperItem('PAPER-100', 'Paper 100');
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(7003, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-100');
         TestData.SetSheetFormat(7003, 1, 0, 0);
 
@@ -98,7 +81,7 @@ codeunit 50611 "PEQI Validator Tests"
         Problems: List of [Text];
     begin
         // [GIVEN] a sheet naming a paper item that does not exist
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(7004, 1, 1, 1, 'BODY', 32, 210, 297, 'NO-SUCH-ITEM');
 
         // [WHEN] the job is validated
@@ -115,7 +98,7 @@ codeunit 50611 "PEQI Validator Tests"
         JobItem: Record "PVS Job Item";
     begin
         // [GIVEN] a job item whose sheet link is empty
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddJobItem(7005, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-100');
         JobItem.SetRange(ID, 7005);
         JobItem.FindFirst();

@@ -72,15 +72,37 @@ codeunit 50602 "PEQI Test Data"
         PVSJob.Insert(true);
     end;
 
-    procedure AddPartMapping(ComponentType: Code[20]; ProductType: Enum "PEQI Part Product Type")
+    /// <summary>A PrintVis component type with a JDF Product Type, given by member name, and an
+    /// imposition grain rule. Inserted without PrintVis's triggers.</summary>
+    procedure AddComponentType(TypeCode: Code[20]; JdfProductType: Text; GrainRule: Enum "PEQI Component Grain Rule")
     var
-        PartMapping: Record "PEQI Part Mapping";
+        ComponentType: Record "PVS Component Types";
+        RecRef: RecordRef;
     begin
-        PartMapping.Init();
-        PartMapping."Component Type" := ComponentType;
-        PartMapping."Product Type" := ProductType;
-        PartMapping."Grain Rule" := PartMapping."Grain Rule"::ParallelToSpine;
-        PartMapping.Insert(true);
+        if ComponentType.Get(TypeCode) then
+            exit;
+        ComponentType.Init();
+        ComponentType.Code := TypeCode;
+        ComponentType."PEQI Grain Rule" := GrainRule;
+        ComponentType.Insert(false);
+        RecRef.GetTable(ComponentType);
+        SetOptionByName(RecRef, ComponentType.FieldNo("JDF Product Type"), JdfProductType);
+        RecRef.Modify(false);
+    end;
+
+    /// <summary>Set an option field by its member name, the way the code under test reads it.</summary>
+    procedure SetOptionByName(var RecRef: RecordRef; FieldNo: Integer; MemberName: Text)
+    var
+        FldRef: FieldRef;
+        Index: Integer;
+    begin
+        FldRef := RecRef.Field(FieldNo);
+        for Index := 1 to StrLen(FldRef.OptionMembers()) do
+            if SelectStr(Index, FldRef.OptionMembers()) = MemberName then begin
+                FldRef.Value := Index - 1;
+                exit;
+            end;
+        Error('No option member %1 on field %2.', MemberName, FldRef.Name());
     end;
 
     /// <summary>Inserts a PVS Job Sheet carrying a finishing code. PrintVis lets a

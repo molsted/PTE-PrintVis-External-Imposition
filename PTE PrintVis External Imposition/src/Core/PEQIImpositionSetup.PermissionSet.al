@@ -19,6 +19,5 @@ permissionset 50581 "PEQI Imp. Setup"
     IncludedPermissionSets = "PEQI Imposition";
     Permissions =
         tabledata "PEQI Imposition Setup" = RIMD,
-        tabledata "PEQI Binding Mapping" = RIMD,
-        tabledata "PEQI Part Mapping" = RIMD;
+        tabledata "PEQI Binding Mapping" = RIMD;
 }

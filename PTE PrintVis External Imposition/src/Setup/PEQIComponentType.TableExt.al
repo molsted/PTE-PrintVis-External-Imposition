@@ -12,31 +12,20 @@ namespace PrintersEquity.ExternalImposition.Setup;
 
 using PrintersEquity.ExternalImposition.Enums;
 
-table 50504 "PEQI Part Mapping"
+/// <summary>The grain rule a component type is imposed under.</summary>
+/// <remarks>
+/// On the component type rather than chosen in the imposition preview: the engine applies grain
+/// during the solve, so the preview is too late; the simple view cannot edit at all; and it is a
+/// property of what is being made, not of a job. The full editor still overrides it per part.
+/// </remarks>
+tableextension 50571 "PEQI Component Type" extends "PVS Component Types"
 {
-    Caption = 'Imposition Part Mapping';
-    DataClassification = CustomerContent;
-    LookupPageId = "PEQI Part Mappings";
-    DrillDownPageId = "PEQI Part Mappings";
-
     fields
     {
-        field(1; "Component Type"; Code[20])
+        field(50500; "PEQI Grain Rule"; Enum "PEQI Component Grain Rule")
         {
-            Caption = 'Component Type';
-            TableRelation = "PVS Component Types";
-            NotBlank = true;
+            Caption = 'Imposition Grain Rule';
+            DataClassification = CustomerContent;
         }
-        field(10; "Product Type"; Enum "PEQI Part Product Type") { Caption = 'Product Type'; }
-        field(11; "Grain Rule"; Enum "PEQI Grain Rule")
-        {
-            Caption = 'Grain Rule';
-            InitValue = ParallelToSpine;
-        }
-    }
-
-    keys
-    {
-        key(PK; "Component Type") { Clustered = true; }
     }
 }

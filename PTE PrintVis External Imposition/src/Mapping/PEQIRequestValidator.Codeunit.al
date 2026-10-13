@@ -20,8 +20,9 @@ codeunit 50538 "PEQI Request Validator"
         NoBindingMsg: Label 'Finishing code %1 has no imposition binding mapping.', Comment = '%1 finishing code';
         NoFinishingMsg: Label 'Job %1/%2/%3 has no finishing code on the job or on any of its sheets.', Comment = '%1 case, %2 job, %3 version';
         MixedFinishingMsg: Label 'The sheets of job %1/%2/%3 have different finishing codes (%4). Set the finishing on the job to choose one binding.', Comment = '%1 case, %2 job, %3 version, %4 comma-separated finishing codes';
-        NoPartMsg: Label 'Component type %1 has no imposition part mapping.', Comment = '%1 component type';
-        OddPagesMsg: Label 'Component %1 has %2 pages. A folded part needs an even count.', Comment = '%1 component, %2 page count';
+        NoComponentTypeMsg: Label 'Component type %1 does not exist in PrintVis.', Comment = '%1 component type';
+        NoProductTypeMsg: Label 'Component type %1 has no JDF Product Type.', Comment = '%1 component type';
+        GrainNotSetMsg: Label 'Component type %1 has no imposition grain rule.', Comment = '%1 component type';
         NoSheetMsg: Label 'Job item %1 of component %2 has no sheet in PrintVis.', Comment = '%1 job item no., %2 component';
         NoSheetPaperMsg: Label 'Sheet %1 of component %2 has no paper item.', Comment = '%1 sheet id, %2 component';
         MissingPaperItemMsg: Label 'Sheet %1 of component %2 names paper item %3, which does not exist.', Comment = '%1 sheet id, %2 component, %3 item no.';
@@ -109,12 +110,12 @@ codeunit 50538 "PEQI Request Validator"
     local procedure ValidateComponents(CaseId: Integer; JobNo: Integer; VersionNo: Integer; var Problems: List of [Text])
     var
         JobItem: Record "PVS Job Item";
-        PartMapping: Record "PEQI Part Mapping";
+        ComponentTypeRec: Record "PVS Component Types";
         JobSheet: Record "PVS Job Sheet";
         Item: Record Item;
-        Pages: Dictionary of [Code[20], Integer];
+        EnumNames: Codeunit "PEQI Enum Names";
+        Seen: List of [Code[20]];
         ComponentType: Code[20];
-        Total: Integer;
     begin
         JobItem.SetRange(ID, CaseId);
         JobItem.SetRange(Job, JobNo);
@@ -127,12 +128,16 @@ codeunit 50538 "PEQI Request Validator"
 
         repeat
             ComponentType := JobItem."Component Type";
-            if Pages.ContainsKey(ComponentType) then
-                Pages.Set(ComponentType, Pages.Get(ComponentType) + JobItem."No. Of Pages")
-            else begin
-                Pages.Add(ComponentType, JobItem."No. Of Pages");
-                if not PartMapping.Get(ComponentType) then
-                    Problems.Add(StrSubstNo(NoPartMsg, ComponentType));
+            if not Seen.Contains(ComponentType) then begin
+                Seen.Add(ComponentType);
+                if not ComponentTypeRec.Get(ComponentType) then
+                    Problems.Add(StrSubstNo(NoComponentTypeMsg, ComponentType))
+                else begin
+                    if EnumNames.OptionMemberName(ComponentTypeRec, ComponentTypeRec.FieldNo("JDF Product Type")) = 'Unknown' then
+                        Problems.Add(StrSubstNo(NoProductTypeMsg, ComponentType));
+                    if ComponentTypeRec."PEQI Grain Rule" = ComponentTypeRec."PEQI Grain Rule"::NotSet then
+                        Problems.Add(StrSubstNo(GrainNotSetMsg, ComponentType));
+                end;
             end;
 
             // The sheet the CSR put the job item on. Each failure names the sheet, because the fix
@@ -149,18 +154,6 @@ codeunit 50538 "PEQI Request Validator"
                     Problems.Add(StrSubstNo(NoSheetFormatMsg, JobSheet."Sheet ID", ComponentType));
             end;
         until JobItem.Next() = 0;
-
-        foreach ComponentType in Pages.Keys() do begin
-            Total := Pages.Get(ComponentType);
-            if PartMapping.Get(ComponentType) then
-                if IsFolded(PartMapping."Product Type") and (Total mod 2 <> 0) then
-                    Problems.Add(StrSubstNo(OddPagesMsg, ComponentType, Total));
-        end;
-    end;
-
-    local procedure IsFolded(ProductType: Enum "PEQI Part Product Type"): Boolean
-    begin
-        exit(ProductType <> ProductType::Flat);
     end;
 
     local procedure ValidatePresses(var Problems: List of [Text])

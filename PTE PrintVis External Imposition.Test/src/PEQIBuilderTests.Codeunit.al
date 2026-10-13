@@ -35,7 +35,7 @@ codeunit 50610 "PEQI Builder Tests"
         JsonHelper: Codeunit "PEQI Json Helper";
     begin
         // [GIVEN] a body split across two job items, 16 pages each
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(5001, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-100');
         TestData.AddJobItem(5001, 1, 1, 2, 'BODY', 16, 210, 297, 'PAPER-100');
@@ -62,8 +62,8 @@ codeunit 50610 "PEQI Builder Tests"
         Parts: JsonArray;
     begin
         // [GIVEN] a cover and a body
-        TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('COVER', 'Cover', "PEQI Component Grain Rule"::ParallelToSpine);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddPaperItem('PAPER-240', 'PAPER-240');
         TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(5002, 1, 1, 1, 'COVER', 4, 148, 210, 'PAPER-240');
@@ -84,8 +84,8 @@ codeunit 50610 "PEQI Builder Tests"
         BodyId: Integer;
     begin
         // [GIVEN] a cover and a body PrintVis has put on different paper
-        TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('COVER', 'Cover', "PEQI Component Grain Rule"::ParallelToSpine);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddPaperItem('PAPER-240', 'PAPER-240');
         TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(5004, 1, 1, 1, 'COVER', 4, 148, 210, 'PAPER-240');
@@ -107,7 +107,7 @@ codeunit 50610 "PEQI Builder Tests"
     procedure AComponentSpanningTwoPapersIsRefused()
     begin
         // [GIVEN] one component whose two job items sit on different paper
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddPaperItem('PAPER-240', 'PAPER-240');
         TestData.AddJobItem(5005, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-100');
@@ -156,7 +156,7 @@ codeunit 50610 "PEQI Builder Tests"
         SubstrateId: Integer;
     begin
         // [GIVEN] a body on a known paper
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddPaperItem('PAPER-115', 'PAPER-115');
         TestData.AddJobItem(5003, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-115');
         SubstrateId := TestData.SheetIdFor(5003, 1);
@@ -182,8 +182,8 @@ codeunit 50610 "PEQI Builder Tests"
         BindingMapping: Record "PEQI Binding Mapping";
     begin
         // [GIVEN] a saddle-stitched job with a cover and a body, one paper, one press
-        TestData.AddPartMapping('COVER', "PEQI Part Product Type"::Cover);
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('COVER', 'Cover', "PEQI Component Grain Rule"::ParallelToSpine);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddPaperItem('PAPER-240', 'PAPER-240');
         TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(6001, 1, 1, 1, 'COVER', 4, 148, 210, 'PAPER-240');
@@ -220,7 +220,7 @@ codeunit 50610 "PEQI Builder Tests"
         Second: Text;
     begin
         // [GIVEN] a job
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddPaperItem('PAPER-90', 'PAPER-90');
         TestData.AddJobItem(6002, 1, 1, 1, 'BODY', 32, 210, 297, 'PAPER-90');
         TestData.AddJob(6002, 1, 1, 'SADDLE', 1000);
@@ -295,7 +295,7 @@ codeunit 50610 "PEQI Builder Tests"
 
     local procedure AddBuildableJob(CaseId: Integer; FinishingCode: Code[20])
     begin
-        TestData.AddPartMapping('BODY', "PEQI Part Product Type"::Body);
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
         TestData.AddPaperItem('PAPER-100', 'PAPER-100');
         TestData.AddJobItem(CaseId, 1, 1, 1, 'BODY', 32, 148, 210, 'PAPER-100');
         TestData.AddJob(CaseId, 1, 1, FinishingCode, 5000);
