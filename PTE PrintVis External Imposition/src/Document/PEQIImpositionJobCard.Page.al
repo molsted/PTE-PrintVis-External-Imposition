@@ -129,9 +129,9 @@ page 50517 "PEQI Imposition Job Card"
                 ToolTip = 'Shows the JSON that was or will be sent to the engine.';
                 // An administrator's diagnostic, not a planner's tool: the raw request is the whole
                 // inline catalogue as JSON. Shown to the same users who are offered the full editor --
-                // write access to "PEQI Paper Setup", which only "PEQI Imp. Setup" grants -- so the two
+                // write access to "PEQI Imposition Setup", which only "PEQI Imp. Setup" grants -- so the two
                 // cannot drift apart.
-                AccessByPermission = tabledata "PEQI Paper Setup" = M;
+                AccessByPermission = tabledata "PEQI Imposition Setup" = M;
 
                 trigger OnAction()
                 begin
@@ -146,7 +146,7 @@ page 50517 "PEQI Imposition Job Card"
                 Image = Calculate;
                 ToolTip = 'Reports the size of the request that would be sent to the editor. Used to confirm the seed fits in a control add-in argument.';
                 // Administrators only, for the same reason and by the same test as View Request.
-                AccessByPermission = tabledata "PEQI Paper Setup" = M;
+                AccessByPermission = tabledata "PEQI Imposition Setup" = M;
 
                 trigger OnAction()
                 var
