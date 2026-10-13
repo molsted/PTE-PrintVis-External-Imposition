@@ -73,7 +73,14 @@ codeunit 50535 "PEQI Request Builder"
     /// <remarks>
     /// <para>
     /// Lives here rather than on the page because a page's local procedure cannot be tested, and
-    /// this one decides what an operator is allowed to do.
+    /// this one decides which editor the operator is given - the slim approve screen or the full
+    /// editor. It is not a security boundary on what Business Central accepts back:
+    /// "PEQI Commit Manager".StoreChoice stores whatever request comes back regardless of mode.
+    /// </para>
+    /// <para>
+    /// <b>Do not give this codeunit a <c>Permissions</c> property that covers "PEQI Paper
+    /// Setup".</b> Inherent permissions would make <c>WritePermission()</c> report true for every
+    /// user, and every user would get the full editor - the check would fail open.
     /// </para>
     /// <para>
     /// <b>The mode is read off the permission sets themselves.</b> "PEQI Paper Setup" is R in
