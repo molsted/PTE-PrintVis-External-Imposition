@@ -145,6 +145,8 @@ page 50517 "PEQI Imposition Job Card"
                 Caption = 'Measure Request Size';
                 Image = Calculate;
                 ToolTip = 'Reports the size of the request that would be sent to the editor. Used to confirm the seed fits in a control add-in argument.';
+                // Administrators only, for the same reason and by the same test as View Request.
+                AccessByPermission = tabledata "PEQI Paper Setup" = M;
 
                 trigger OnAction()
                 var
