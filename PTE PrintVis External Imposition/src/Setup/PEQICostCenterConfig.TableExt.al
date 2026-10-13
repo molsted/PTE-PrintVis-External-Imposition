@@ -36,8 +36,9 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
 
             trigger OnValidate()
             begin
-                // Assigned once and never regenerated: the engine's solutionId hashes it.
-                if "PEQI Use for Imposition" and IsNullGuid("PEQI Press Id") then
+                // Assigned once and never regenerated -- the engine's solutionId hashes it -- unless
+                // it is missing, or this row was copied from another and so carries that press's id.
+                if "PEQI Use for Imposition" and (IsNullGuid("PEQI Press Id") or PEQIPressIdHeldByAnother()) then
                     "PEQI Press Id" := CreateGuid();
             end;
         }
@@ -60,8 +61,8 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
         field(50512; "PEQI Plate Punch"; Decimal) { Caption = 'Plate Punch'; DecimalPlaces = 0 : 5; DataClassification = CustomerContent; }
         field(50513; "PEQI Trailing Margin"; Decimal) { Caption = 'Trailing Margin'; DecimalPlaces = 0 : 5; DataClassification = CustomerContent; }
         field(50514; "PEQI Sheets Per Hour"; Integer) { Caption = 'Sheets Per Hour'; MinValue = 0; DataClassification = CustomerContent; }
-        field(50515; "PEQI Simplex"; Boolean) { Caption = 'Simplex'; DataClassification = CustomerContent; }
-        field(50516; "PEQI Work And Back"; Boolean) { Caption = 'Work and Back'; DataClassification = CustomerContent; }
+        field(50515; "PEQI Simplex"; Boolean) { InitValue = true; Caption = 'Simplex'; DataClassification = CustomerContent; }
+        field(50516; "PEQI Work And Back"; Boolean) { InitValue = true; Caption = 'Work and Back'; DataClassification = CustomerContent; }
         field(50517; "PEQI Work And Turn"; Boolean) { Caption = 'Work and Turn'; DataClassification = CustomerContent; }
         field(50518; "PEQI Work And Tumble"; Boolean) { Caption = 'Work and Tumble'; DataClassification = CustomerContent; }
         field(50519; "PEQI Perfecting"; Boolean) { Caption = 'Perfecting'; DataClassification = CustomerContent; }
@@ -69,6 +70,22 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
         field(50521; "PEQI Make"; Text[100]) { Caption = 'Make'; DataClassification = CustomerContent; }
         field(50522; "PEQI Model"; Text[100]) { Caption = 'Model'; DataClassification = CustomerContent; }
     }
+
+    /// <summary>Whether another configuration already carries this row's press id.</summary>
+    procedure PEQIPressIdHeldByAnother(): Boolean
+    var
+        Other: Record "PVS Cost Center Configuration";
+    begin
+        if IsNullGuid("PEQI Press Id") then
+            exit(false);
+        Other.SetRange("PEQI Press Id", "PEQI Press Id");
+        Other.SetFilter("Cost Center Code", '<>%1', "Cost Center Code");
+        if not Other.IsEmpty() then
+            exit(true);
+        Other.SetRange("Cost Center Code", "Cost Center Code");
+        Other.SetFilter(Configuration, '<>%1', Configuration);
+        exit(not Other.IsEmpty());
+    end;
 
     /// <summary>The work styles this press declares, as engine spellings.</summary>
     procedure PEQIWorkStyleList(): List of [Text]

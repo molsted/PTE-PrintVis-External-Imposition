@@ -25,6 +25,7 @@ codeunit 50618 "PEQI Press Tests"
         TestData: Codeunit "PEQI Test Data";
         CatalogMapper: Codeunit "PEQI Catalog Mapper";
         JsonHelper: Codeunit "PEQI Json Helper";
+        Validator: Codeunit "PEQI Request Validator";
 
     [Test]
     procedure AConfigurationMarkedForImpositionIsAPress()
@@ -148,5 +149,63 @@ codeunit 50618 "PEQI Press Tests"
         Presses := CatalogMapper.BuildPresses();
 
         Assert.AreEqual(0, Presses.Count(), 'An unmarked configuration is not sent');
+    end;
+
+    [Test]
+    procedure APressMarkedWithoutValidateIsRefused()
+    var
+        Config: Record "PVS Cost Center Configuration";
+        Problems: List of [Text];
+    begin
+        // [GIVEN] a configuration marked by direct assignment, so no id was assigned
+        TestData.AddPressConfig('PRESS-RAW', 'STD');
+        Config.Get('PRESS-RAW', 'STD');
+        Clear(Config."PEQI Press Id");
+        Config.Modify(false);
+
+        // [WHEN] the job is validated
+        Validator.Validate(9901, 1, 1, Problems);
+
+        // [THEN] it is refused rather than sent with an all-zero id
+        Assert.IsTrue(ProblemsMention(Problems, 'PRESS-RAW'), 'A press with no id is named');
+    end;
+
+    [Test]
+    procedure ACopiedPressIdIsRefusedAndReplacedWhenRemarked()
+    var
+        Original: Record "PVS Cost Center Configuration";
+        Copy: Record "PVS Cost Center Configuration";
+        Problems: List of [Text];
+    begin
+        // [GIVEN] a second configuration carrying the first one's id, as a copy would
+        TestData.AddPressConfig('PRESS-ORIG', 'STD');
+        TestData.AddPressConfig('PRESS-COPY', 'STD');
+        Original.Get('PRESS-ORIG', 'STD');
+        Copy.Get('PRESS-COPY', 'STD');
+        Copy."PEQI Press Id" := Original."PEQI Press Id";
+        Copy.Modify(false);
+
+        // [WHEN] the job is validated
+        Validator.Validate(9902, 1, 1, Problems);
+
+        // [THEN] the shared id is refused
+        Assert.IsTrue(ProblemsMention(Problems, 'PRESS-COPY'), 'A copied press id is named');
+
+        // [WHEN] the copy is unmarked and marked again
+        Copy.Validate("PEQI Use for Imposition", false);
+        Copy.Validate("PEQI Use for Imposition", true);
+
+        // [THEN] it has its own id, and the original's is untouched
+        Assert.AreNotEqual(Original."PEQI Press Id", Copy."PEQI Press Id", 'Re-marking gives the copy its own id');
+    end;
+
+    local procedure ProblemsMention(Problems: List of [Text]; Needle: Text): Boolean
+    var
+        Problem: Text;
+    begin
+        foreach Problem in Problems do
+            if StrPos(Problem, Needle) > 0 then
+                exit(true);
+        exit(false);
     end;
 }

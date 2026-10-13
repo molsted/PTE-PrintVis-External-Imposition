@@ -28,6 +28,8 @@ codeunit 50538 "PEQI Request Validator"
         NoSheetFormatMsg: Label 'Sheet %1 of component %2 has no printing format (Length x Width).', Comment = '%1 sheet id, %2 component';
         NoPressMsg: Label 'No cost center configuration is marked Use for Imposition.', Locked = false;
         NoPressFormatMsg: Label 'Press %1 %2 is marked for imposition but its configuration has no maximum printing format.', Comment = '%1 cost centre, %2 configuration';
+        NoPressIdMsg: Label 'Press %1 %2 is marked for imposition but has no press id. Untick and tick Use for Imposition to assign one.', Comment = '%1 cost centre, %2 configuration';
+        SharedPressIdMsg: Label 'Press %1 %2 shares its press id with another configuration, probably because it was copied. Untick and tick Use for Imposition to give it its own.', Comment = '%1 cost centre, %2 configuration';
 
     /// <summary>Collects every problem rather than stopping at the first, so an
     /// operator fixes them in one visit. True when the request may be built.</summary>
@@ -173,6 +175,11 @@ codeunit 50538 "PEQI Request Validator"
         repeat
             if (Config."Max Printing Format Width" <= 0) or (Config."Max Printing Format Length" <= 0) then
                 Problems.Add(StrSubstNo(NoPressFormatMsg, Config."Cost Center Code", Config.Configuration));
+            if IsNullGuid(Config."PEQI Press Id") then
+                Problems.Add(StrSubstNo(NoPressIdMsg, Config."Cost Center Code", Config.Configuration))
+            else
+                if Config.PEQIPressIdHeldByAnother() then
+                    Problems.Add(StrSubstNo(SharedPressIdMsg, Config."Cost Center Code", Config.Configuration));
         until Config.Next() = 0;
     end;
 }
