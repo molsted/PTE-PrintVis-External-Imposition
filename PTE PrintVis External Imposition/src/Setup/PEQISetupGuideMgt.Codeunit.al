@@ -31,7 +31,7 @@ codeunit 50567 "PEQI Setup Guide Mgt."
         ShortTitleTxt: Label 'Imposition';
         DescriptionTxt: Label 'Connect to the Impositioning engine and check the PrintVis setup imposition reads -- component types, finishing types, presses and units -- fixing what needs attention in place.';
         // Versioned: a new image is stored under a new code rather than written over the old one.
-        BannerTok: Label 'PEQI-SETUP-GUIDE-BANNER-1.PNG', Locked = true;
+        BannerTok: Label 'PEQI-SETUP-GUIDE-BANNER-2.PNG', Locked = true;
         BannerResourceTok: Label 'PEQIGuideBanner.png', Locked = true;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Guided Experience", 'OnRegisterAssistedSetup', '', false, false)]
