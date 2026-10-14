@@ -26,6 +26,7 @@ codeunit 50624 "PEQI Setup Guide Tests"
         GuideMgt: Codeunit "PEQI Setup Guide Mgt.";
 
     [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
     procedure WarningsAloneCompleteTheGuide()
     var
         Findings: Record "PEQI Setup Finding" temporary;
@@ -37,6 +38,7 @@ codeunit 50624 "PEQI Setup Guide Tests"
     end;
 
     [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
     procedure ABlockingFindingKeepsTheGuideIncomplete()
     var
         Findings: Record "PEQI Setup Finding" temporary;
@@ -48,6 +50,7 @@ codeunit 50624 "PEQI Setup Guide Tests"
     end;
 
     [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
     procedure ABlockingFindingThatReappearsResetsTheGuide()
     var
         Findings: Record "PEQI Setup Finding" temporary;
@@ -64,18 +67,17 @@ codeunit 50624 "PEQI Setup Guide Tests"
     end;
 
     [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
     [HandlerFunctions('BlockingRemainsMessageHandler')]
     procedure TheGuideWalksFromWelcomeToFinish()
     var
         Setup: Record "PEQI Imposition Setup";
         Guide: TestPage "PEQI Setup Guide";
-        OriginalUrl: Text[250];
         Step: Integer;
     begin
         // [GIVEN] no engine URL -- blocking, and it keeps the guide off the network
         Setup := Setup.GetSetup();
         Setup.Get('');
-        OriginalUrl := Setup."Engine Base Url";
         Setup."Engine Base Url" := '';
         Setup.Modify(false);
 
@@ -90,25 +92,20 @@ codeunit 50624 "PEQI Setup Guide Tests"
 
         // [THEN] the missing URL keeps it incomplete, and the handler saw the message saying so
         Assert.IsFalse(GuideMgt.IsComplete(), 'A missing engine URL keeps the guide incomplete');
-
-        Setup.Get('');
-        Setup."Engine Base Url" := OriginalUrl;
-        Setup.Modify(false);
     end;
 
     [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
     procedure OpeningTheGuideResetsACompletionThatNoLongerHolds()
     var
         Setup: Record "PEQI Imposition Setup";
         Findings: Record "PEQI Setup Finding" temporary;
         Guide: TestPage "PEQI Setup Guide";
-        OriginalUrl: Text[250];
     begin
         // [GIVEN] a completed guide, and then the engine URL is cleared
         GuideMgt.UpdateCompletion(Findings);
         Setup := Setup.GetSetup();
         Setup.Get('');
-        OriginalUrl := Setup."Engine Base Url";
         Setup."Engine Base Url" := '';
         Setup.Modify(false);
 
@@ -118,10 +115,6 @@ codeunit 50624 "PEQI Setup Guide Tests"
 
         // [THEN] opening it ran the checks and reset the completion
         Assert.IsFalse(GuideMgt.IsComplete(), 'Opening the guide resets a completion that no longer holds');
-
-        Setup.Get('');
-        Setup."Engine Base Url" := OriginalUrl;
-        Setup.Modify(false);
     end;
 
     [MessageHandler]
