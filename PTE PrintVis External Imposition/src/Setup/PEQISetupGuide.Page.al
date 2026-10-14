@@ -14,7 +14,6 @@ namespace PrintersEquity.ExternalImposition.Setup;
 using PrintersEquity.ExternalImposition.Enums;
 using PrintersEquity.ExternalImposition.Integration;
 using PrintersEquity.ExternalImposition.Mapping;
-using System.Environment;
 using System.Security.User;
 
 /// <summary>The imposition setup guide: nine steps that check what imposition reads and fix it in place.</summary>
@@ -43,7 +42,7 @@ page 50522 "PEQI Setup Guide"
                 Editable = false;
                 Visible = BannerVisible;
 
-                field(BannerImage; BannerResources."Media Reference")
+                field(BannerImage; TempBanner.Picture)
                 {
                     ShowCaption = false;
                     Editable = false;
@@ -379,7 +378,7 @@ page 50522 "PEQI Setup Guide"
 
     var
         TempFindings: Record "PEQI Setup Finding" temporary;
-        BannerResources: Record "Media Resources";
+        TempBanner: Record "PEQI Guide Banner" temporary;
         Checks: Codeunit "PEQI Setup Checks";
         GuideMgt: Codeunit "PEQI Setup Guide Mgt.";
         Units: Codeunit "PEQI Unit Converter";
@@ -429,7 +428,7 @@ page 50522 "PEQI Setup Guide"
         Rec := Rec.GetSetup();
         Rec.Get('');
         KeyIsSet := Rec.HasApiKey();
-        BannerVisible := GuideMgt.GetBanner(BannerResources);
+        BannerVisible := GuideMgt.GetBanner(TempBanner);
         UnitsTxt := StrSubstNo(UnitsLbl, Units.FormatUnitSymbol(), Units.MarginUnitSymbol());
         TestConnectionNow();
         // Counted once per visit: the item master is read in full, and only Restate changes it.

@@ -11,10 +11,8 @@
 
 namespace PrintersEquity.ExternalImposition.Setup;
 
-using System.Environment;
 using System.Environment.Configuration;
 using System.Media;
-using System.Utilities;
 
 /// <summary>Puts the imposition guide on Business Central's Assisted Setup page, and keeps its
 /// completed mark true to the setup.</summary>
@@ -30,8 +28,6 @@ codeunit 50567 "PEQI Setup Guide Mgt."
         TitleTxt: Label 'Set up imposition';
         ShortTitleTxt: Label 'Imposition';
         DescriptionTxt: Label 'Connect to the Impositioning engine and check the PrintVis setup imposition reads -- component types, finishing types, presses and units -- fixing what needs attention in place.';
-        // Versioned: a new image is stored under a new code rather than written over the old one.
-        BannerTok: Label 'PEQI-SETUP-GUIDE-BANNER-2.PNG', Locked = true;
         BannerResourceTok: Label 'PEQIGuideBanner.png', Locked = true;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Guided Experience", 'OnRegisterAssistedSetup', '', false, false)]
@@ -66,37 +62,21 @@ codeunit 50567 "PEQI Setup Guide Mgt."
         exit(true);
     end;
 
-    /// <summary>The Printer's Equity banner shown at the top of the guide. False when it cannot
-    /// be shown, which leaves the guide without it rather than failing.</summary>
-    /// <remarks>
-    /// The image ships inside the extension and is stored once in Media Resources, where Business
-    /// Central's own guides keep their banners. Stored on first use rather than at install, so a
-    /// publish that does not run install code still gets it; a user who may not write Media
-    /// Resources before that first use simply sees no banner.
-    /// </remarks>
-    procedure GetBanner(var MediaResources: Record "Media Resources"): Boolean
-    begin
-        if MediaResources.Get(BannerTok) then
-            if MediaResources."Media Reference".HasValue() then
-                exit(true);
-        if not MediaResources.WritePermission() then
-            exit(false);
-        // A row without an image is replaced, not trusted: kept, it would hide the banner for good.
-        if MediaResources.Get(BannerTok) then
-            MediaResources.Delete();
-        StoreBanner();
-        if not MediaResources.Get(BannerTok) then
-            exit(false);
-        exit(MediaResources."Media Reference".HasValue());
-    end;
-
-    local procedure StoreBanner()
+    /// <summary>The Printer's Equity banner shown at the top of the guide, read from the image the
+    /// extension ships. False when there is none, which leaves the guide without it.</summary>
+    procedure GetBanner(var Banner: Record "PEQI Guide Banner" temporary): Boolean
     var
-        MediaResourcesMgt: Codeunit "Media Resources Mgt.";
-        Banner: InStream;
+        Image: InStream;
+        Picture: OutStream;
     begin
-        NavApp.GetResource(BannerResourceTok, Banner);
-        MediaResourcesMgt.InsertMediaFromInstream(BannerTok, Banner);
+        Banner.Reset();
+        Banner.DeleteAll();
+        Banner.Init();
+        NavApp.GetResource(BannerResourceTok, Image);
+        Banner.Picture.CreateOutStream(Picture);
+        CopyStream(Picture, Image);
+        Banner.Insert();
+        exit(Banner.Picture.HasValue());
     end;
 
     procedure IsComplete(): Boolean

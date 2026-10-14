@@ -13,7 +13,6 @@ namespace PrintersEquity.ExternalImposition.Tests;
 
 using PrintersEquity.ExternalImposition.Enums;
 using PrintersEquity.ExternalImposition.Setup;
-using System.Environment;
 using System.TestLibraries.Utilities;
 
 codeunit 50624 "PEQI Setup Guide Tests"
@@ -119,35 +118,17 @@ codeunit 50624 "PEQI Setup Guide Tests"
     end;
 
     [Test]
-    [TransactionModel(TransactionModel::AutoRollback)]
     procedure TheGuideCarriesTheBanner()
     var
-        MediaResources: Record "Media Resources";
+        TempBanner: Record "PEQI Guide Banner" temporary;
     begin
-        // [WHEN] the banner is asked for, the first time or any later one
-        // [THEN] it is found, stored from the image the extension ships, with an image in it
-        Assert.IsTrue(GuideMgt.GetBanner(MediaResources), 'The banner is stored and found');
-        Assert.IsTrue(MediaResources."Media Reference".HasValue(), 'The banner holds an image');
-        Assert.IsTrue(GuideMgt.GetBanner(MediaResources), 'Asking again finds the stored banner');
-    end;
-
-    [Test]
-    [TransactionModel(TransactionModel::AutoRollback)]
-    procedure ABannerRowWithoutAnImageIsReplaced()
-    var
-        MediaResources: Record "Media Resources";
-        Stored: Record "Media Resources";
-    begin
-        // [GIVEN] the banner's row exists but holds no image, as a failed first store would leave it
-        Assert.IsTrue(GuideMgt.GetBanner(Stored), 'The banner is stored');
-        Stored.Delete();
-        MediaResources.Init();
-        MediaResources.Code := Stored.Code;
-        MediaResources.Insert();
-
-        // [THEN] asking for the banner stores the image again rather than hiding it for good
-        Assert.IsTrue(GuideMgt.GetBanner(MediaResources), 'An empty banner row is replaced');
-        Assert.IsTrue(MediaResources."Media Reference".HasValue(), 'The replacement holds an image');
+        // [WHEN] the banner is asked for, the first time and again
+        // [THEN] it is read from the image the extension ships, once, with an image in it
+        Assert.IsTrue(GuideMgt.GetBanner(TempBanner), 'The banner is found');
+        Assert.IsTrue(GuideMgt.GetBanner(TempBanner), 'Asking again finds it again');
+        Assert.AreEqual(1, TempBanner.Count(), 'Asking again does not add a second banner');
+        TempBanner.FindFirst();
+        Assert.IsTrue(TempBanner.Picture.HasValue(), 'The banner holds an image');
     end;
 
     [MessageHandler]
