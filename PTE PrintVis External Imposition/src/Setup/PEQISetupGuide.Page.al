@@ -423,17 +423,14 @@ page 50522 "PEQI Setup Guide"
         UnitsLbl: Label 'Formats in %1, margins in %2.', Comment = '%1 format unit, %2 margin unit';
         IncompleteMsg: Label 'The setup is saved. Blocking problems remaining: %1. Imposition stays unfinished on the Assisted Setup page until the blocking problems are fixed. Run this guide again to see them.', Comment = '%1 count';
 
-    trigger OnInit()
-    begin
-        // Before the layout is built, as Microsoft's guides load their banners.
-        BannerVisible := GuideMgt.GetBanner(TempBanner);
-    end;
-
     trigger OnOpenPage()
     begin
         Rec := Rec.GetSetup();
         Rec.Get('');
         KeyIsSet := Rec.HasApiKey();
+        // Here and not in OnInit: importing the image writes to tenant media, and Assisted Setup
+        // opens this page with RunModal, which refuses to start inside a write transaction.
+        BannerVisible := GuideMgt.GetBanner(TempBanner);
         UnitsTxt := StrSubstNo(UnitsLbl, Units.FormatUnitSymbol(), Units.MarginUnitSymbol());
         TestConnectionNow();
         // Counted once per visit: the item master is read in full, and only Restate changes it.
