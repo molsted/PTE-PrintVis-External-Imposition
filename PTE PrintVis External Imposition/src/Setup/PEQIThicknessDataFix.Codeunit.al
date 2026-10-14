@@ -84,6 +84,22 @@ codeunit 50547 "PEQI Thickness Data Fix"
                 Round(FirstFixed * Units.MicronsPerStoredUnit(Item), 0.1, '='));
     end;
 
+    /// <summary>How many paper items record a thickness in the wrong unit, as Preview counts them.
+    /// Zero when the Paper Thickness unit has no factor to restate by. Shows nothing.</summary>
+    procedure CountNeedingRestatement() Wrong: Integer
+    var
+        Item: Record Item;
+    begin
+        if Factor() <= 1 then
+            exit(0);
+        Item.SetFilter("PVS Thickness", '<>%1', 0);
+        if Item.FindSet() then
+            repeat
+                if NeedsRestating(Item) then
+                    Wrong += 1;
+            until Item.Next() = 0;
+    end;
+
     /// <summary>Restates the rows that are wrong, after confirmation.</summary>
     procedure Apply()
     var
@@ -97,11 +113,7 @@ codeunit 50547 "PEQI Thickness Data Fix"
         end;
 
         Item.SetFilter("PVS Thickness", '<>%1', 0);
-        if Item.FindSet() then
-            repeat
-                if NeedsRestating(Item) then
-                    Wrong += 1;
-            until Item.Next() = 0;
+        Wrong := CountNeedingRestatement();
 
         if Wrong = 0 then begin
             Message(NothingToDoMsg, 0);

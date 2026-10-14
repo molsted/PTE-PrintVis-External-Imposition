@@ -11,7 +11,9 @@
 namespace PrintersEquity.ExternalImposition.Setup;
 
 using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Integration;
 using PrintersEquity.ExternalImposition.Mapping;
+using System.Security.AccessControl;
 
 /// <summary>Every question about whether imposition is set up, asked in one place.</summary>
 /// <remarks>
@@ -40,6 +42,14 @@ codeunit 50566 "PEQI Setup Checks"
         SharedPressIdMsg: Label 'Press %1 %2 shares its press id with another configuration, probably because it was copied. Untick and tick Use for Imposition to give it its own.', Comment = '%1 cost centre, %2 configuration';
         NoGripperSideMsg: Label 'Press %1 %2 is marked for imposition but has no gripper edge side.', Comment = '%1 cost centre, %2 configuration';
         NoWorkStyleMsg: Label 'Press %1 %2 is marked for imposition but allows no work style.', Comment = '%1 cost centre, %2 configuration';
+        TransportType: Enum "PEQI Transport Type";
+        NoEngineUrlMsg: Label 'The engine base URL is not set, so no job can be solved.';
+        NoEditorUrlMsg: Label 'The editor URL is not set, so no job can show the editor.';
+        UnreachableMsg: Label 'The engine did not answer. %1', Comment = '%1 the reason';
+        NoStandardUnitMsg: Label 'PrintVis has no %1 row in Standard Units, so no length can be converted.', Comment = '%1 Format or Margins';
+        ThicknessMsg: Label '%1 paper items record a thickness in a different unit from the one PrintVis states. Check and restate them on the Paper and Units step.', Comment = '%1 count';
+        NoAdminMsg: Label 'Nobody holds the PEQI Imp. Setup permission set, so nobody can open the full editor or change the imposition setup.';
+        AdminRoleTok: Label 'PEQI IMP. SETUP', Locked = true;
 
     /// <summary>What stops a component type being imposed; nothing added when nothing does.</summary>
     procedure ComponentTypeProblems(ComponentType: Record "PVS Component Types"; var Problems: List of [Text])
@@ -110,6 +120,134 @@ codeunit 50566 "PEQI Setup Checks"
     procedure NoPressMessage(): Text
     begin
         exit(NoPressMsg);
+    end;
+
+    /// <summary>Every finding, in place of whatever Findings held. Live adds the engine
+    /// connection test; without it nothing is sent over the network.</summary>
+    procedure Collect(var Findings: Record "PEQI Setup Finding" temporary; Live: Boolean)
+    begin
+        Findings.Reset();
+        Findings.DeleteAll();
+        CheckConnection(Findings, Live);
+        CheckComponentTypes(Findings);
+        CheckFinishingTypes(Findings);
+        CheckPresses(Findings);
+        CheckPaperAndUnits(Findings);
+        CheckPermissions(Findings);
+    end;
+
+    /// <summary>The finding for an engine that did not answer. Public so a guide that tested the
+    /// connection once can keep the result without testing it on every step.</summary>
+    procedure AddUnreachable(var Findings: Record "PEQI Setup Finding" temporary; Detail: Text)
+    begin
+        AddFinding(Findings, "PEQI Setup Area"::Connection, "PEQI Finding Severity"::Blocking, StrSubstNo(UnreachableMsg, Detail));
+    end;
+
+    procedure SetTransport(NewTransportType: Enum "PEQI Transport Type")
+    begin
+        TransportType := NewTransportType;
+    end;
+
+    local procedure CheckConnection(var Findings: Record "PEQI Setup Finding" temporary; Live: Boolean)
+    var
+        Setup: Record "PEQI Imposition Setup";
+        Client: Codeunit "PEQI Engine Client";
+        Detail: Text;
+    begin
+        Setup := Setup.GetSetup();
+        if Setup."Engine Base Url" = '' then
+            AddFinding(Findings, "PEQI Setup Area"::Connection, "PEQI Finding Severity"::Blocking, NoEngineUrlMsg)
+        else
+            if Live then begin
+                Client.SetTransport(TransportType);
+                if not Client.TestConnection(Detail) then
+                    AddUnreachable(Findings, Detail);
+            end;
+        if Setup."Spa Url" = '' then
+            AddFinding(Findings, "PEQI Setup Area"::Connection, "PEQI Finding Severity"::Blocking, NoEditorUrlMsg);
+    end;
+
+    local procedure CheckComponentTypes(var Findings: Record "PEQI Setup Finding" temporary)
+    var
+        ComponentType: Record "PVS Component Types";
+        Problems: List of [Text];
+        Problem: Text;
+    begin
+        if ComponentType.FindSet() then
+            repeat
+                Clear(Problems);
+                ComponentTypeProblems(ComponentType, Problems);
+                foreach Problem in Problems do
+                    AddFinding(Findings, "PEQI Setup Area"::ComponentTypes, "PEQI Finding Severity"::Warning, Problem, ComponentType.RecordId());
+            until ComponentType.Next() = 0;
+    end;
+
+    local procedure CheckFinishingTypes(var Findings: Record "PEQI Setup Finding" temporary)
+    var
+        FinishingType: Record "PVS Finishing Types";
+        Problems: List of [Text];
+        Problem: Text;
+    begin
+        if FinishingType.FindSet() then
+            repeat
+                Clear(Problems);
+                FinishingTypeProblems(FinishingType, false, Problems);
+                foreach Problem in Problems do
+                    AddFinding(Findings, "PEQI Setup Area"::FinishingTypes, "PEQI Finding Severity"::Warning, Problem, FinishingType.RecordId());
+            until FinishingType.Next() = 0;
+    end;
+
+    local procedure CheckPresses(var Findings: Record "PEQI Setup Finding" temporary)
+    var
+        Config: Record "PVS Cost Center Configuration";
+        Problems: List of [Text];
+        Problem: Text;
+    begin
+        Config.SetRange("PEQI Use for Imposition", true);
+        if not Config.FindSet() then begin
+            AddFinding(Findings, "PEQI Setup Area"::Presses, "PEQI Finding Severity"::Blocking, NoPressMsg);
+            exit;
+        end;
+        repeat
+            Clear(Problems);
+            PressProblems(Config, Problems);
+            PressSetupGaps(Config, Problems);
+            foreach Problem in Problems do
+                AddFinding(Findings, "PEQI Setup Area"::Presses, "PEQI Finding Severity"::Blocking, Problem, Config.RecordId());
+        until Config.Next() = 0;
+    end;
+
+    local procedure CheckPaperAndUnits(var Findings: Record "PEQI Setup Finding" temporary)
+    var
+        StandardUnit: Record "PVS Standard Units";
+        ThicknessFix: Codeunit "PEQI Thickness Data Fix";
+        Wrong: Integer;
+    begin
+        StandardUnit.SetRange(Type, StandardUnit.Type::Format);
+        if StandardUnit.IsEmpty() then
+            AddFinding(Findings, "PEQI Setup Area"::PaperAndUnits, "PEQI Finding Severity"::Blocking,
+                StrSubstNo(NoStandardUnitMsg, Format(StandardUnit.Type::Format)));
+        StandardUnit.SetRange(Type, StandardUnit.Type::Margins);
+        if StandardUnit.IsEmpty() then
+            AddFinding(Findings, "PEQI Setup Area"::PaperAndUnits, "PEQI Finding Severity"::Blocking,
+                StrSubstNo(NoStandardUnitMsg, Format(StandardUnit.Type::Margins)));
+
+        Wrong := ThicknessFix.CountNeedingRestatement();
+        if Wrong > 0 then
+            AddFinding(Findings, "PEQI Setup Area"::PaperAndUnits, "PEQI Finding Severity"::Warning, StrSubstNo(ThicknessMsg, Wrong));
+    end;
+
+    /// <summary>Whether anyone holds PEQI Imp. Setup. Skipped, not reported, for an admin who may
+    /// not read Access Control: the guide must not fail on a question it cannot ask.</summary>
+    local procedure CheckPermissions(var Findings: Record "PEQI Setup Finding" temporary)
+    var
+        AccessControl: Record "Access Control";
+    begin
+        if not AccessControl.ReadPermission() then
+            exit;
+        AccessControl.SetRange("Role ID", AdminRoleTok);
+        if AccessControl.IsEmpty() then
+            AddFinding(Findings, "PEQI Setup Area"::Permissions, "PEQI Finding Severity"::Warning, NoAdminMsg);
     end;
 
     /// <summary>The problems as one line, for a column; blank when there are none.</summary>
