@@ -200,6 +200,37 @@ codeunit 50612 "PEQI Client Tests"
     end;
 
     [Test]
+    procedure TestConnectionRefusesAnAnswerThatIsNotTheEngine()
+    var
+        Client: Codeunit "PEQI Engine Client";
+        Detail: Text;
+    begin
+        // [GIVEN] a base URL that reaches the editor's page instead of the engine: the site
+        // answers any GET it has no route for with its index.html and a 200
+        NewClient(Client);
+        Queue.QueueResponse(200, '<!doctype html><html></html>');
+
+        // [THEN] the test fails pointing at the base URL and the URL called, not "answered"
+        Assert.IsFalse(Client.TestConnection(Detail), 'An answer that is not a list of part types is not the engine');
+        Assert.IsTrue(StrPos(Detail, 'base URL') > 0, 'The reason points at the engine base URL');
+        Assert.IsTrue(StrPos(Detail, '/imposition/part-types') > 0, 'The reason names the URL called');
+    end;
+
+    [Test]
+    procedure ASolve404StillSaysTheSolutionIsStale()
+    var
+        Client: Codeunit "PEQI Engine Client";
+    begin
+        // [GIVEN] the engine answers a solve with 404
+        NewClient(Client);
+        Queue.QueueResponse(404, '');
+
+        // [THEN] outside a connection test that means the solution is gone
+        asserterror Client.Calculate('{"parts":[]}');
+        Assert.ExpectedError('no longer known');
+    end;
+
+    [Test]
     procedure RetriesResumeAfterAConnectionTest()
     var
         Client: Codeunit "PEQI Engine Client";

@@ -25,6 +25,7 @@ codeunit 50541 "PEQI Engine Client"
         HttpErr: Label 'The Impositioning engine returned %1.\%2', Comment = '%1 status code, %2 detail';
         StaleSolutionErr: Label 'The quoted solution is no longer known to the engine. Solve the job again.';
         NotFoundErr: Label 'The engine answered 404 Not Found at %1. Check the engine base URL -- it normally ends in /api.', Comment = '%1 url';
+        NotEngineErr: Label 'The address %1 answered, but not as the Impositioning engine. Check the engine base URL -- it normally ends in /api.', Comment = '%1 url';
         SingleAttempt: Boolean;
 
     procedure SetTransport(NewTransportType: Enum "PEQI Transport Type")
@@ -73,10 +74,30 @@ codeunit 50541 "PEQI Engine Client"
         exit(Answered);
     end;
 
+    /// <remarks>
+    /// A 2xx is not enough. The production Function App serves the editor at a catch-all GET
+    /// route, so a base URL of the bare host answers this route with the editor's index.html and
+    /// a 200. Part types is a JSON array, so only an array counts as the engine answering.
+    /// </remarks>
     [TryFunction]
     local procedure TryPing()
+    var
+        Setup: Record "PEQI Imposition Setup";
+        PartTypes: JsonArray;
+        Route: Text;
+        Answer: Text;
     begin
-        Call('GET', 'imposition/part-types', '');
+        Route := 'imposition/part-types';
+        Answer := Call('GET', Route, '');
+        if not PartTypes.ReadFrom(Answer) then begin
+            Setup.Get('');
+            Error(NotEngineErr, UrlFor(Setup, Route));
+        end;
+    end;
+
+    local procedure UrlFor(Setup: Record "PEQI Imposition Setup"; Route: Text): Text
+    begin
+        exit(DelChr(Setup."Engine Base Url", '>', '/') + '/' + Route);
     end;
 
     local procedure PingTimeoutMs(): Integer
@@ -111,7 +132,7 @@ codeunit 50541 "PEQI Engine Client"
         if Setup."Engine Base Url" = '' then
             Error(NoUrlErr);
 
-        Url := DelChr(Setup."Engine Base Url", '>', '/') + '/' + Route;
+        Url := UrlFor(Setup, Route);
         Transport := TransportType;
         MaxAttempts := Setup."Retry Count" + 1;
         TimeoutMs := Setup."Timeout (ms)";
