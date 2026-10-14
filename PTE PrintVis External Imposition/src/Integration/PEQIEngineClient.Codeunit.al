@@ -24,6 +24,7 @@ codeunit 50541 "PEQI Engine Client"
         UnreachableErr: Label 'The Impositioning engine could not be reached at %1.', Comment = '%1 url';
         HttpErr: Label 'The Impositioning engine returned %1.\%2', Comment = '%1 status code, %2 detail';
         StaleSolutionErr: Label 'The quoted solution is no longer known to the engine. Solve the job again.';
+        NotFoundErr: Label 'The engine answered 404 Not Found at %1. Check the engine base URL -- it normally ends in /api.', Comment = '%1 url';
         SingleAttempt: Boolean;
 
     procedure SetTransport(NewTransportType: Enum "PEQI Transport Type")
@@ -132,12 +133,12 @@ codeunit 50541 "PEQI Engine Client"
             // 429 and 5xx are the moment being wrong; everything else is the
             // request being wrong, and repeating it would only waste the operator's time.
             if Reached and not IsRetryable(StatusCode) then
-                RaiseFor(StatusCode, ResponseBody);
+                RaiseFor(Url, StatusCode, ResponseBody);
 
             if Attempt = MaxAttempts then begin
                 if not Reached then
                     Error(UnreachableErr, Url);
-                RaiseFor(StatusCode, ResponseBody);
+                RaiseFor(Url, StatusCode, ResponseBody);
             end;
 
             Sleep(BackoffMs(Attempt));
@@ -155,11 +156,15 @@ codeunit 50541 "PEQI Engine Client"
         exit(Round(500 * Power(2, Attempt - 1), 1));
     end;
 
-    local procedure RaiseFor(StatusCode: Integer; ResponseBody: Text)
+    local procedure RaiseFor(Url: Text; StatusCode: Integer; ResponseBody: Text)
     begin
         LastDetail := DescribeProblem(ResponseBody);
-        if StatusCode = 404 then
+        if StatusCode = 404 then begin
+            // On a connection test a 404 means the URL or route is wrong, not that a solution went stale.
+            if SingleAttempt then
+                Error(NotFoundErr, Url);
             Error(StaleSolutionErr);
+        end;
         Error(HttpErr, StatusCode, LastDetail);
     end;
 

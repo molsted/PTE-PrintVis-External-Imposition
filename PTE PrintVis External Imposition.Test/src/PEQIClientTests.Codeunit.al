@@ -183,6 +183,23 @@ codeunit 50612 "PEQI Client Tests"
     end;
 
     [Test]
+    procedure TestConnectionNamesTheUrlOnA404()
+    var
+        Client: Codeunit "PEQI Engine Client";
+        Detail: Text;
+    begin
+        // [GIVEN] an engine URL at which the route does not exist
+        NewClient(Client);
+        Queue.QueueResponse(404, '');
+
+        // [THEN] the test fails pointing at the URL, not at a stale solution
+        Assert.IsFalse(Client.TestConnection(Detail), 'A 404 is not a working connection');
+        Assert.IsTrue(StrPos(Detail, 'base URL') > 0, 'The reason points at the engine base URL');
+        Assert.IsTrue(StrPos(Detail, '/imposition/part-types') > 0, 'The reason names the URL called');
+        Assert.IsFalse(StrPos(Detail, 'no longer known') > 0, 'A connection test never says a solution is stale');
+    end;
+
+    [Test]
     procedure RetriesResumeAfterAConnectionTest()
     var
         Client: Codeunit "PEQI Engine Client";
