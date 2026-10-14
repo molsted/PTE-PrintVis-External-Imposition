@@ -210,6 +210,7 @@ codeunit 50623 "PEQI Setup Check Tests"
     end;
 
     [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
     procedure AFixedComponentTypeDropsOutOnRecheck()
     var
         ComponentType: Record "PVS Component Types";
@@ -466,6 +467,45 @@ codeunit 50623 "PEQI Setup Check Tests"
         Checks.Collect(Findings, false);
 
         Assert.AreEqual(0, Queue.CallCount(), 'Nothing is sent when the checks are not live');
+    end;
+
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure AnAnsweringEngineHasNoConnectionFinding()
+    var
+        Setup: Record "PEQI Imposition Setup";
+        Findings: Record "PEQI Setup Finding" temporary;
+    begin
+        // [GIVEN] both URLs set, and an engine that answers with a list of part types
+        Setup := Setup.GetSetup();
+        Setup.Get('');
+        Setup."Engine Base Url" := 'https://engine.example.com/api';
+        Setup."Spa Url" := 'https://engine.example.com';
+        Setup.Modify(false);
+        Queue.Reset();
+        Queue.QueueResponse(200, '[]');
+        Checks.SetTransport("PEQI Transport Type"::Test);
+
+        // [WHEN] the checks run live
+        Checks.Collect(Findings, true);
+
+        // [THEN] the connection has nothing to report
+        Assert.AreEqual(0, Checks.AreaCount(Findings, "PEQI Setup Area"::Connection), 'An answering engine is no finding');
+    end;
+
+    [Test]
+    procedure AThicknessCountSetByTheCallerIsUsedInPlaceOfAScan()
+    var
+        Findings: Record "PEQI Setup Finding" temporary;
+    begin
+        // [GIVEN] a caller that has counted the paper once and says seven are wrong
+        Checks.SetThicknessCount(7);
+
+        // [WHEN] the checks run
+        Checks.Collect(Findings, false);
+
+        // [THEN] the warning carries that count, not a fresh scan's
+        Assert.IsTrue(FindFinding(Findings, "PEQI Setup Area"::PaperAndUnits, "PEQI Finding Severity"::Warning, '7 paper items', ''), 'The stored count is reported');
     end;
 
     /// <summary>Positions Findings on the first finding in that area and severity whose text holds

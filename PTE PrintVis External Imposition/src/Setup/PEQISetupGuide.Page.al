@@ -228,8 +228,6 @@ page 50522 "PEQI Setup Guide"
                     ToolTip = 'Reports how many paper items record a thickness that cannot be a sheet of paper, and what each would become. Changes nothing.';
 
                     trigger OnDrillDown()
-                    var
-                        ThicknessFix: Codeunit "PEQI Thickness Data Fix";
                     begin
                         ThicknessFix.Preview();
                     end;
@@ -241,10 +239,9 @@ page 50522 "PEQI Setup Guide"
                     ToolTip = 'Restates the thickness of paper items recorded in the wrong unit, after asking. Changes the item master.';
 
                     trigger OnDrillDown()
-                    var
-                        ThicknessFix: Codeunit "PEQI Thickness Data Fix";
                     begin
                         ThicknessFix.Apply();
+                        Checks.SetThicknessCount(ThicknessFix.CountNeedingRestatement());
                         Recheck();
                         CurrPage.Update(false);
                     end;
@@ -258,6 +255,8 @@ page 50522 "PEQI Setup Guide"
                     trigger OnDrillDown()
                     begin
                         Page.Run(Page::"PVS Standard Units");
+                        Recheck();
+                        CurrPage.Update(false);
                     end;
                 }
             }
@@ -368,6 +367,7 @@ page 50522 "PEQI Setup Guide"
         Checks: Codeunit "PEQI Setup Checks";
         GuideMgt: Codeunit "PEQI Setup Guide Mgt.";
         Units: Codeunit "PEQI Unit Converter";
+        ThicknessFix: Codeunit "PEQI Thickness Data Fix";
         CurrentStep: Integer;
         BackEnabled: Boolean;
         NextEnabled: Boolean;
@@ -398,13 +398,14 @@ page 50522 "PEQI Setup Guide"
         UsersLbl: Label 'Assign permission sets to users';
         AllSetTxt: Label 'Nothing here needs attention.';
         ConnectedTxt: Label 'The engine answered.';
-        ComponentTypesAttentionTxt: Label '%1 problems on component types, listed below. A job using one of them is refused until it is fixed; other jobs are not affected.', Comment = '%1 count';
-        FinishingTypesAttentionTxt: Label '%1 problems on finishing types, listed below. A job with one of them is refused until it is fixed; other jobs are not affected.', Comment = '%1 count';
+        NotTestedTxt: Label 'Not tested since the address or key changed. Choose Test connection.';
+        ComponentTypesAttentionTxt: Label 'Problems on component types: %1, listed below. A job using one of them is refused until it is fixed; other jobs are not affected.', Comment = '%1 count';
+        FinishingTypesAttentionTxt: Label 'Problems on finishing types: %1, listed below. A job with one of them is refused until it is fixed; other jobs are not affected.', Comment = '%1 count';
         NothingOpenTxt: Label 'Everything imposition reads is set up.';
-        BlockingSummaryTxt: Label '%1 blocking problems and %2 warnings. A blocking problem stops every job, so the guide stays incomplete until they are fixed.', Comment = '%1 blocking count, %2 warning count';
-        WarningSummaryTxt: Label '%1 warnings and nothing blocking. Each warning stops only the jobs that use what it names; the guide counts as complete.', Comment = '%1 warning count';
+        BlockingSummaryTxt: Label 'Blocking problems: %1. Warnings: %2. A blocking problem stops every job, so the guide stays incomplete until they are fixed.', Comment = '%1 blocking count, %2 warning count';
+        WarningSummaryTxt: Label 'Warnings: %1, and nothing blocking. Each warning stops only the jobs that use what it names; the guide counts as complete.', Comment = '%1 warning count';
         UnitsLbl: Label 'Formats in %1, margins in %2.', Comment = '%1 format unit, %2 margin unit';
-        IncompleteMsg: Label 'The setup is saved. %1 blocking problems remain, so imposition stays unfinished on the Assisted Setup page until they are fixed. Run this guide again to see them.', Comment = '%1 count';
+        IncompleteMsg: Label 'The setup is saved. Blocking problems remaining: %1. Imposition stays unfinished on the Assisted Setup page until the blocking problems are fixed. Run this guide again to see them.', Comment = '%1 count';
 
     trigger OnOpenPage()
     begin
@@ -413,6 +414,8 @@ page 50522 "PEQI Setup Guide"
         KeyIsSet := Rec.HasApiKey();
         UnitsTxt := StrSubstNo(UnitsLbl, Units.FormatUnitSymbol(), Units.MarginUnitSymbol());
         TestConnectionNow();
+        // Counted once per visit: the item master is read in full, and only Restate changes it.
+        Checks.SetThicknessCount(ThicknessFix.CountNeedingRestatement());
         ShowStep(1);
         GuideMgt.UpdateCompletion(TempFindings);
     end;
@@ -473,8 +476,15 @@ page 50522 "PEQI Setup Guide"
     local procedure RefreshStatus()
     begin
         ConnectionStatusTxt := AreaStatus("PEQI Setup Area"::Connection, ConnectionStyle);
-        if (ConnectionStatusTxt = AllSetTxt) and ConnectionTested and ConnectionOk then
-            ConnectionStatusTxt := ConnectedTxt;
+        if ConnectionStatusTxt = AllSetTxt then
+            if ConnectionTested and ConnectionOk then
+                ConnectionStatusTxt := ConnectedTxt
+            else
+                if (Rec."Engine Base Url" <> '') and not ConnectionTested then begin
+                    // An edit cleared the last result: nothing has said the engine answers.
+                    ConnectionStatusTxt := NotTestedTxt;
+                    ConnectionStyle := 'Ambiguous';
+                end;
         ComponentTypesStatusTxt := CountStatus("PEQI Setup Area"::ComponentTypes, ComponentTypesAttentionTxt, ComponentTypesStyle);
         FinishingTypesStatusTxt := CountStatus("PEQI Setup Area"::FinishingTypes, FinishingTypesAttentionTxt, FinishingTypesStyle);
         PressesStatusTxt := AreaStatus("PEQI Setup Area"::Presses, PressesStyle);

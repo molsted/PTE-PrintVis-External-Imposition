@@ -45,11 +45,14 @@ codeunit 50566 "PEQI Setup Checks"
         TransportType: Enum "PEQI Transport Type";
         NoEngineUrlMsg: Label 'The engine base URL is not set, so no job can be solved.';
         NoEditorUrlMsg: Label 'The editor URL is not set, so no job can show the editor.';
-        UnreachableMsg: Label 'The engine did not answer. %1', Comment = '%1 the reason';
-        NoStandardUnitMsg: Label 'PrintVis has no %1 row in Standard Units, so no length can be converted.', Comment = '%1 Format or Margins';
+        UnreachableMsg: Label 'The connection test failed. %1', Comment = '%1 the reason';
+        NoStandardUnitMsg: Label 'PrintVis has no Format row with a blank code in Standard Units, so no length can be converted.';
         ThicknessMsg: Label '%1 paper items record a thickness in a different unit from the one PrintVis states. Check and restate them on the Paper and Units step.', Comment = '%1 count';
-        NoAdminMsg: Label 'Nobody holds the PEQI Imp. Setup permission set, so nobody can open the full editor or change the imposition setup.';
+        NoAdminMsg: Label 'Nobody holds the PEQI Imp. Setup permission set, so nobody can open the full editor or change the imposition setup. Users with SUPER are not counted.';
+        CannotReadPermissionsMsg: Label 'You cannot read who holds which permission sets, so whether anyone holds PEQI Imp. Setup could not be checked.';
         AdminRoleTok: Label 'PEQI IMP. SETUP', Locked = true;
+        ThicknessCount: Integer;
+        ThicknessCountKnown: Boolean;
 
     /// <summary>What stops a component type being imposed; nothing added when nothing does.</summary>
     procedure ComponentTypeProblems(ComponentType: Record "PVS Component Types"; var Problems: List of [Text])
@@ -117,11 +120,6 @@ codeunit 50566 "PEQI Setup Checks"
         until Config.Next() = 0;
     end;
 
-    procedure NoPressMessage(): Text
-    begin
-        exit(NoPressMsg);
-    end;
-
     /// <summary>Every finding, in place of whatever Findings held. Live adds the engine
     /// connection test; without it nothing is sent over the network.</summary>
     procedure Collect(var Findings: Record "PEQI Setup Finding" temporary; Live: Boolean)
@@ -146,6 +144,19 @@ codeunit 50566 "PEQI Setup Checks"
     procedure SetTransport(NewTransportType: Enum "PEQI Transport Type")
     begin
         TransportType := NewTransportType;
+    end;
+
+    /// <summary>Keeps a count of paper items with a wrongly stated thickness, so Collect does not
+    /// scan the item master again on every call.</summary>
+    /// <remarks>
+    /// The guide collects on opening and on every step, and counting reads every paper item. The
+    /// caller that wants it cached counts once, sets the count here, and sets it again after it
+    /// changes the items. Without it Collect counts afresh, as before.
+    /// </remarks>
+    procedure SetThicknessCount(Wrong: Integer)
+    begin
+        ThicknessCount := Wrong;
+        ThicknessCountKnown := true;
     end;
 
     local procedure CheckConnection(var Findings: Record "PEQI Setup Finding" temporary; Live: Boolean)
@@ -223,28 +234,29 @@ codeunit 50566 "PEQI Setup Checks"
         ThicknessFix: Codeunit "PEQI Thickness Data Fix";
         Wrong: Integer;
     begin
-        StandardUnit.SetRange(Type, StandardUnit.Type::Format);
-        if StandardUnit.IsEmpty() then
-            AddFinding(Findings, "PEQI Setup Area"::PaperAndUnits, "PEQI Finding Severity"::Blocking,
-                StrSubstNo(NoStandardUnitMsg, Format(StandardUnit.Type::Format)));
-        StandardUnit.SetRange(Type, StandardUnit.Type::Margins);
-        if StandardUnit.IsEmpty() then
-            AddFinding(Findings, "PEQI Setup Area"::PaperAndUnits, "PEQI Finding Severity"::Blocking,
-                StrSubstNo(NoStandardUnitMsg, Format(StandardUnit.Type::Margins)));
+        // PrintVis converts formats, and margins too, through the Format row with a blank code.
+        if not StandardUnit.Get(StandardUnit.Type::Format, '') then
+            AddFinding(Findings, "PEQI Setup Area"::PaperAndUnits, "PEQI Finding Severity"::Blocking, NoStandardUnitMsg);
 
-        Wrong := ThicknessFix.CountNeedingRestatement();
+        if ThicknessCountKnown then
+            Wrong := ThicknessCount
+        else
+            Wrong := ThicknessFix.CountNeedingRestatement();
         if Wrong > 0 then
             AddFinding(Findings, "PEQI Setup Area"::PaperAndUnits, "PEQI Finding Severity"::Warning, StrSubstNo(ThicknessMsg, Wrong));
     end;
 
-    /// <summary>Whether anyone holds PEQI Imp. Setup. Skipped, not reported, for an admin who may
-    /// not read Access Control: the guide must not fail on a question it cannot ask.</summary>
+    /// <summary>Whether anyone holds PEQI Imp. Setup. An admin who may not read Access Control gets
+    /// a warning saying so, not a pass: the guide must not fail on a question it cannot ask, and
+    /// must not say "all set" for one it did not.</summary>
     local procedure CheckPermissions(var Findings: Record "PEQI Setup Finding" temporary)
     var
         AccessControl: Record "Access Control";
     begin
-        if not AccessControl.ReadPermission() then
+        if not AccessControl.ReadPermission() then begin
+            AddFinding(Findings, "PEQI Setup Area"::Permissions, "PEQI Finding Severity"::Warning, CannotReadPermissionsMsg);
             exit;
+        end;
         AccessControl.SetRange("Role ID", AdminRoleTok);
         if AccessControl.IsEmpty() then
             AddFinding(Findings, "PEQI Setup Area"::Permissions, "PEQI Finding Severity"::Warning, NoAdminMsg);

@@ -34,5 +34,6 @@ table 50509 "PEQI Setup Finding"
     {
         key(PK; "Entry No.") { Clustered = true; }
         key(ByArea; "Setup Area", Severity) { }
+        key(BySeverity; Severity, "Entry No.") { }
     }
 }

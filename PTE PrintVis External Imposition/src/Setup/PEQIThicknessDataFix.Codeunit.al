@@ -55,8 +55,10 @@ codeunit 50547 "PEQI Thickness Data Fix"
         FirstName: Text;
         FirstStored: Decimal;
         FirstFixed: Decimal;
+        ThicknessFactor: Decimal;
     begin
-        if Factor() <= 1 then begin
+        ThicknessFactor := Factor();
+        if ThicknessFactor <= 1 then begin
             Message(NoFactorMsg);
             exit;
         end;
@@ -65,12 +67,12 @@ codeunit 50547 "PEQI Thickness Data Fix"
         if Item.FindSet() then
             repeat
                 Total += 1;
-                if NeedsRestating(Item) then begin
+                if NeedsRestating(Item, ThicknessFactor) then begin
                     Wrong += 1;
                     if Wrong = 1 then begin
                         FirstName := Item.Description;
                         FirstStored := Item."PVS Thickness";
-                        FirstFixed := Item."PVS Thickness" * Factor();
+                        FirstFixed := Item."PVS Thickness" * ThicknessFactor;
                     end;
                 end;
             until Item.Next() = 0;
@@ -89,13 +91,18 @@ codeunit 50547 "PEQI Thickness Data Fix"
     procedure CountNeedingRestatement() Wrong: Integer
     var
         Item: Record Item;
+        ThicknessFactor: Decimal;
     begin
-        if Factor() <= 1 then
+        ThicknessFactor := Factor();
+        if ThicknessFactor <= 1 then
             exit(0);
+        // Only what NeedsRestating reads: the thickness, and the weight and weight unit that
+        // MicronsPerStoredUnit converts through.
+        Item.SetLoadFields("PVS Thickness", "PVS Weight", "PVS Weight Unit");
         Item.SetFilter("PVS Thickness", '<>%1', 0);
         if Item.FindSet() then
             repeat
-                if NeedsRestating(Item) then
+                if NeedsRestating(Item, ThicknessFactor) then
                     Wrong += 1;
             until Item.Next() = 0;
     end;
@@ -106,8 +113,10 @@ codeunit 50547 "PEQI Thickness Data Fix"
         Item: Record Item;
         Changed: Integer;
         Wrong: Integer;
+        ThicknessFactor: Decimal;
     begin
-        if Factor() <= 1 then begin
+        ThicknessFactor := Factor();
+        if ThicknessFactor <= 1 then begin
             Message(NoFactorMsg);
             exit;
         end;
@@ -120,13 +129,13 @@ codeunit 50547 "PEQI Thickness Data Fix"
             exit;
         end;
 
-        if not Confirm(ConfirmQst, false, Wrong, Factor()) then
+        if not Confirm(ConfirmQst, false, Wrong, ThicknessFactor) then
             exit;
 
         if Item.FindSet() then
             repeat
-                if NeedsRestating(Item) then begin
-                    Item."PVS Thickness" := Item."PVS Thickness" * Factor();
+                if NeedsRestating(Item, ThicknessFactor) then begin
+                    Item."PVS Thickness" := Item."PVS Thickness" * ThicknessFactor;
                     Item.Modify(true);
                     Changed += 1;
                 end;
@@ -155,13 +164,13 @@ codeunit 50547 "PEQI Thickness Data Fix"
     /// Whether this item's thickness reads as something other than paper, and would read as paper
     /// once restated.
     /// </summary>
-    local procedure NeedsRestating(Item: Record Item): Boolean
+    local procedure NeedsRestating(Item: Record Item; ThicknessFactor: Decimal): Boolean
     var
         Stored: Decimal;
         Restated: Decimal;
     begin
         Stored := Item."PVS Thickness" * Units.MicronsPerStoredUnit(Item);
-        Restated := Item."PVS Thickness" * Factor() * Units.MicronsPerStoredUnit(Item);
+        Restated := Item."PVS Thickness" * ThicknessFactor * Units.MicronsPerStoredUnit(Item);
         exit((Stored < 10) and (Restated >= 10) and (Restated <= 2000));
     end;
 

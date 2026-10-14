@@ -93,6 +93,8 @@ page 50526 "PEQI Setup Findings"
                 Rec := Source;
                 Rec.Insert();
             until Source.Next() = 0;
+        // Blocking sorts first, so what stops every job is what the summary lists first.
+        Rec.SetCurrentKey(Severity, "Entry No.");
         if Rec.FindFirst() then;
         CurrPage.Update(false);
     end;
