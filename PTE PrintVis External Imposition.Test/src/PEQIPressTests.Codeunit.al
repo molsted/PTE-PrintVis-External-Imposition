@@ -276,6 +276,59 @@ codeunit 50618 "PEQI Press Tests"
         Assert.IsFalse(Press.Contains('sideLayEdge'), 'Both sends no side lay edge');
     end;
 
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure ANewConfigurationDefaultsToABottomGripper()
+    var
+        Config: Record "PVS Cost Center Configuration";
+    begin
+        // [WHEN] a configuration is initialised
+        Config.Init();
+
+        // [THEN] its gripper edge side is Bottom
+        Assert.AreEqual(Config."PEQI Gripper Edge Side"::Bottom, Config."PEQI Gripper Edge Side", 'A new configuration grips at the bottom');
+    end;
+
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure MarkingAConfigurationWithNoGripperSideSetsBottom()
+    var
+        Config: Record "PVS Cost Center Configuration";
+    begin
+        // [GIVEN] an unmarked configuration with no gripper side, as one from before the field would be
+        TestData.AddPressConfig('PRESS-GRIP', 'STD');
+        Config.Get('PRESS-GRIP', 'STD');
+        Config.Validate("PEQI Use for Imposition", false);
+        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::" ";
+        Config.Modify(false);
+
+        // [WHEN] it is marked for imposition
+        Config.Validate("PEQI Use for Imposition", true);
+
+        // [THEN] it grips at the bottom
+        Assert.AreEqual(Config."PEQI Gripper Edge Side"::Bottom, Config."PEQI Gripper Edge Side", 'Marking a press sets the default gripper side');
+    end;
+
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure MarkingAConfigurationKeepsAGripperSideAlreadySet()
+    var
+        Config: Record "PVS Cost Center Configuration";
+    begin
+        // [GIVEN] an unmarked configuration that grips at the top
+        TestData.AddPressConfig('PRESS-TOP', 'STD');
+        Config.Get('PRESS-TOP', 'STD');
+        Config.Validate("PEQI Use for Imposition", false);
+        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::Top;
+        Config.Modify(false);
+
+        // [WHEN] it is marked for imposition
+        Config.Validate("PEQI Use for Imposition", true);
+
+        // [THEN] its own side is kept
+        Assert.AreEqual(Config."PEQI Gripper Edge Side"::Top, Config."PEQI Gripper Edge Side", 'A side already chosen is not overwritten');
+    end;
+
     /// <summary>The press built for a cost center. PressName falls back to the cost-center code
     /// when the configuration has no Name, which is the case for every test configuration.</summary>
     local procedure PressNamed(Presses: JsonArray; CostCenterCode: Text; var Press: JsonObject): Boolean

@@ -40,6 +40,10 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
                 // it is missing, or this row was copied from another and so carries that press's id.
                 if "PEQI Use for Imposition" and (IsNullGuid("PEQI Press Id") or PEQIPressIdHeldByAnother(false)) then
                     "PEQI Press Id" := CreateGuid();
+                // The InitValue below reaches only configurations created after this field existed;
+                // one that existed before gets the same default when it becomes a press.
+                if "PEQI Use for Imposition" and ("PEQI Gripper Edge Side" = "PEQI Gripper Edge Side"::" ") then
+                    "PEQI Gripper Edge Side" := "PEQI Gripper Edge Side"::Bottom;
             end;
         }
         field(50501; "PEQI Press Id"; Guid)
@@ -50,7 +54,8 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
         }
         field(50502; "PEQI Press Type Override"; Enum "PEQI Press Type") { Caption = 'Press Type Override'; DataClassification = CustomerContent; }
         field(50503; "PEQI Use Press Type Override"; Boolean) { Caption = 'Use Press Type Override'; DataClassification = CustomerContent; }
-        field(50504; "PEQI Gripper Edge Side"; Enum "PEQI Press Edge") { Caption = 'Gripper Edge Side'; DataClassification = CustomerContent; }
+        // Bottom by default: the gripper is at the bottom edge in the press's own orientation on most sheetfed presses.
+        field(50504; "PEQI Gripper Edge Side"; Enum "PEQI Press Edge") { Caption = 'Gripper Edge Side'; InitValue = Bottom; DataClassification = CustomerContent; }
         field(50506; "PEQI Non-Printable Top"; Decimal) { Caption = 'Non-Printable Top'; DecimalPlaces = 0 : 5; DataClassification = CustomerContent; }
         field(50507; "PEQI Non-Printable Bottom"; Decimal) { Caption = 'Non-Printable Bottom'; DecimalPlaces = 0 : 5; DataClassification = CustomerContent; }
         field(50508; "PEQI Non-Printable Left"; Decimal) { Caption = 'Non-Printable Left'; DecimalPlaces = 0 : 5; DataClassification = CustomerContent; }

@@ -126,9 +126,10 @@ codeunit 50623 "PEQI Setup Check Tests"
         Config: Record "PVS Cost Center Configuration";
         Problems: List of [Text];
     begin
-        // [GIVEN] a marked press with no gripper side and no work style
+        // [GIVEN] a marked press whose gripper side was cleared, and no work style
         TestData.AddPressConfig('SC-GAPS', 'STD');
         Config.Get('SC-GAPS', 'STD');
+        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::" ";
         Config."PEQI Simplex" := false;
         Config."PEQI Work And Back" := false;
         Config.Modify(false);
@@ -263,10 +264,14 @@ codeunit 50623 "PEQI Setup Check Tests"
     [TransactionModel(TransactionModel::AutoRollback)]
     procedure AMarkedPressWithoutAGripperSideIsBlocking()
     var
+        Config: Record "PVS Cost Center Configuration";
         Findings: Record "PEQI Setup Finding" temporary;
     begin
-        // AddPressConfig leaves the gripper side blank
+        // [GIVEN] a marked press whose gripper side was cleared
         TestData.AddPressConfig('SC-NOGRIP', 'STD');
+        Config.Get('SC-NOGRIP', 'STD');
+        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::" ";
+        Config.Modify(false);
 
         Checks.Collect(Findings, false);
 
