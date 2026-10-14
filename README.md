@@ -26,6 +26,14 @@ Imposition reads what PrintVis already records. There are no separate paper, pre
 part or binding lists to keep; the few things PrintVis has no field for sit on
 PrintVis's own pages.
 
+Start with **Assisted Setup → Set up imposition** (also *Setup Guide* on the
+Imposition Setup page). It checks everything in the table below, lets you fix it in
+place, and stays unfinished on Assisted Setup while anything that would stop every
+job remains: no engine connection, no press marked for imposition, a marked press
+without a gripper side, work style or PrintVis format, or no Standard Units. A
+component type or finishing type that is not set up is a warning — it stops only
+the jobs that use it.
+
 | Where | What to fill in |
 |---|---|
 | Imposition Setup | Engine URL, editor URL, API key, defaults, and the default trims used when a job item states none |

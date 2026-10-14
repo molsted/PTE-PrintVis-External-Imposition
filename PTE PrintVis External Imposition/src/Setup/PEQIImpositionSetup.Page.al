@@ -95,34 +95,13 @@ page 50510 "PEQI Imposition Setup"
     {
         area(Processing)
         {
-            action(PEQIPreviewThicknessFix)
+            action(PEQISetupGuide)
             {
                 ApplicationArea = All;
-                Caption = 'Check Paper Thickness Units';
-                Image = TestReport;
-                ToolTip = 'Reports how many paper items record a thickness that cannot be a sheet of paper, and what each would become. Changes nothing.';
-
-                trigger OnAction()
-                var
-                    Fix: Codeunit "PEQI Thickness Data Fix";
-                begin
-                    Fix.Preview();
-                end;
-            }
-
-            action(PEQIApplyThicknessFix)
-            {
-                ApplicationArea = All;
-                Caption = 'Restate Paper Thickness Units';
-                Image = ChangeTo;
-                ToolTip = 'Restates the thickness of paper items that are recorded in the wrong unit, so the number matches what PrintVis says the unit is. Changes the item master. Run the check first.';
-
-                trigger OnAction()
-                var
-                    Fix: Codeunit "PEQI Thickness Data Fix";
-                begin
-                    Fix.Apply();
-                end;
+                Caption = 'Setup Guide';
+                Image = Setup;
+                RunObject = page "PEQI Setup Guide";
+                ToolTip = 'Checks the PrintVis setup imposition reads -- component types, finishing types, presses and units -- and fixes what needs attention in place. Also on the Assisted Setup page.';
             }
         }
     }
