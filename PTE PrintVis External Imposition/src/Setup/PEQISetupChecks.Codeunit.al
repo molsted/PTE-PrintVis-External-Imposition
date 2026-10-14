@@ -37,11 +37,11 @@ codeunit 50566 "PEQI Setup Checks"
         GrainNotSetMsg: Label 'Component type %1 has no imposition grain rule.', Comment = '%1 component type';
         BottomBindingMsg: Label 'Finishing type %1 is bound at the bottom edge, which the engine does not impose. It binds left, right or top.', Comment = '%1 finishing code';
         NoPressMsg: Label 'No cost center configuration is marked Use for Imposition.';
-        NoPressFormatMsg: Label 'Press %1 %2 is marked for imposition but its configuration has no maximum printing format.', Comment = '%1 cost centre, %2 configuration';
-        NoPressIdMsg: Label 'Press %1 %2 is marked for imposition but has no press id. Untick and tick Use for Imposition to assign one.', Comment = '%1 cost centre, %2 configuration';
-        SharedPressIdMsg: Label 'Press %1 %2 shares its press id with another configuration, probably because it was copied. Untick and tick Use for Imposition to give it its own.', Comment = '%1 cost centre, %2 configuration';
-        NoGripperSideMsg: Label 'Press %1 %2 is marked for imposition but has no gripper edge side.', Comment = '%1 cost centre, %2 configuration';
-        NoWorkStyleMsg: Label 'Press %1 %2 is marked for imposition but allows no work style.', Comment = '%1 cost centre, %2 configuration';
+        NoPressFormatMsg: Label 'Press %1 (configuration %2) is marked for imposition but has no maximum printing format in PrintVis.', Comment = '%1 cost centre, %2 configuration';
+        NoPressIdMsg: Label 'Press %1 (configuration %2) is marked for imposition but has no press id. Untick and tick Use for Imposition to assign one.', Comment = '%1 cost centre, %2 configuration';
+        SharedPressIdMsg: Label 'Press %1 (configuration %2) shares its press id with another configuration, probably because it was copied. Untick and tick Use for Imposition to give it its own.', Comment = '%1 cost centre, %2 configuration';
+        NoGripperSideMsg: Label 'Press %1 (configuration %2) is marked for imposition but has no gripper edge side.', Comment = '%1 cost centre, %2 configuration';
+        NoWorkStyleMsg: Label 'Press %1 (configuration %2) is marked for imposition but allows no work style.', Comment = '%1 cost centre, %2 configuration';
         TransportType: Enum "PEQI Transport Type";
         NoEngineUrlMsg: Label 'The engine base URL is not set, so no job can be solved.';
         NoEditorUrlMsg: Label 'The editor URL is not set, so no job can show the editor.';

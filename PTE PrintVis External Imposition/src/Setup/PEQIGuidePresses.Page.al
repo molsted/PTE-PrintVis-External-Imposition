@@ -64,10 +64,10 @@ page 50525 "PEQI Guide Presses"
         {
             action(ShowAll)
             {
-                Caption = 'Show All';
+                Caption = 'Show All Presses';
                 Image = AllLines;
                 Visible = MarkedView;
-                ToolTip = 'Lists every cost center configuration, so one can be marked for imposition.';
+                ToolTip = 'Lists every configuration PrintVis records as a printing machine, so one can be marked for imposition.';
 
                 trigger OnAction()
                 begin
@@ -126,13 +126,19 @@ page 50525 "PEQI Guide Presses"
             ProblemStyle := 'Unfavorable';
     end;
 
+    /// <summary>The marked configurations, whatever PrintVis calls them -- a marked one is a press
+    /// by definition -- or every printing machine, so another can be marked. Admin, prepress,
+    /// finishing and shipping configurations are left out of the second list: none is a press.</summary>
     local procedure ShowMarked(Marked: Boolean)
     begin
         MarkedView := Marked;
-        if Marked then
-            Rec.SetRange("PEQI Use for Imposition", true)
-        else
+        if Marked then begin
+            Rec.SetRange("Machine Type");
+            Rec.SetRange("PEQI Use for Imposition", true);
+        end else begin
             Rec.SetRange("PEQI Use for Imposition");
+            Rec.SetRange("Machine Type", Rec."Machine Type"::"Printing machine");
+        end;
         if Rec.FindFirst() then;
     end;
 }
