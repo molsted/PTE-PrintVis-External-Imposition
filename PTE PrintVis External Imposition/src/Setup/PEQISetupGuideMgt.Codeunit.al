@@ -40,7 +40,7 @@ codeunit 50567 "PEQI Setup Guide Mgt."
         GuidedExperience: Codeunit "Guided Experience";
     begin
         GuidedExperience.InsertAssistedSetup(TitleTxt, ShortTitleTxt, DescriptionTxt, 15,
-            ObjectType::Page, Page::"PEQI Setup Guide", Enum::"Assisted Setup Group"::"PEQI Imposition",
+            ObjectType::Page, Page::"PEQI Setup Guide", Enum::"Assisted Setup Group"::"PEQI Printers Equity",
             '', Enum::"Video Category"::Uncategorized, '');
     end;
 

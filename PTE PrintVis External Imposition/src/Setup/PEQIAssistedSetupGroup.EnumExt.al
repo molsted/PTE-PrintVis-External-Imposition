@@ -13,8 +13,9 @@ namespace PrintersEquity.ExternalImposition.Setup;
 
 using System.Environment.Configuration;
 
-/// <summary>Files the imposition guide under its own heading on the Assisted Setup page.</summary>
+/// <summary>The Printer's Equity heading on the Assisted Setup page, for every guide this
+/// publisher ships. The ordinal is what Guided Experience stores, so it never changes.</summary>
 enumextension 50574 "PEQI Assisted Setup Group" extends "Assisted Setup Group"
 {
-    value(50500; "PEQI Imposition") { Caption = 'Imposition'; }
+    value(50500; "PEQI Printers Equity") { Caption = 'Printer''s Equity'; }
 }
