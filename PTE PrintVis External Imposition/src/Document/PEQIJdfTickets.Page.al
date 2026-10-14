@@ -32,7 +32,6 @@ page 50520 "PEQI Jdf Tickets"
                 field(Job; Rec.Job) { ApplicationArea = All; }
                 field(Version; Rec.Version) { ApplicationArea = All; }
                 field("File Name"; Rec."File Name") { ApplicationArea = All; }
-                field(Flavour; Rec.Flavour) { ApplicationArea = All; }
                 field("Jdf Version"; Rec."Jdf Version") { ApplicationArea = All; }
                 field(Sha256; Rec.Sha256) { ApplicationArea = All; }
                 field("Created At"; Rec."Created At") { ApplicationArea = All; }

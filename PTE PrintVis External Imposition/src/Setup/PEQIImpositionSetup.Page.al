@@ -74,7 +74,6 @@ page 50510 "PEQI Imposition Setup"
             {
                 Caption = 'JDF';
                 field("Jdf Version"; Rec."Jdf Version") { ApplicationArea = All; }
-                field("Jdf Flavour"; Rec."Jdf Flavour") { ApplicationArea = All; }
                 field("Job Id Format"; Rec."Job Id Format")
                 {
                     ApplicationArea = All;

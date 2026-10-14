@@ -43,13 +43,6 @@ enum 50559 "PEQI Grain Policy"
     value(2; Required) { Caption = 'Required'; }
 }
 
-enum 50560 "PEQI Jdf Flavour"
-{
-    Extensible = false;
-    value(0; Stripping) { Caption = 'Stripping'; }
-    value(1; PrepsTemplate) { Caption = 'Preps template'; }
-}
-
 enum 50561 "PEQI Jdf Version"
 {
     Extensible = false;

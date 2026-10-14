@@ -175,16 +175,5 @@ codeunit 50546 "PEQI Enum Names"
         exit('V14');
     end;
 
-    /// <summary>The JDF writer to use.</summary>
-    procedure JdfFlavour(Value: Enum "PEQI Jdf Flavour"): Text
-    begin
-        case Value of
-            Value::Stripping:
-                exit('Stripping');
-            Value::PrepsTemplate:
-                exit('PrepsTemplate');
-        end;
-        exit('Stripping');
-    end;
 
 }

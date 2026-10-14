@@ -109,11 +109,10 @@ codeunit 50543 "PEQI Commit Manager"
 
         JsonHelper.AddText(RequestObject, 'jobId', JobId(ImpositionJob, Setup));
         JsonHelper.AddText(RequestObject, 'solutionId', ImpositionJob."Solution Id");
-        // Names, not ordinals. Two more of the Format(x, 0, 9) calls that were putting enum
-        // positions on the wire; these two happened to line up with the engine's, which is luck
-        // rather than a reason to leave them.
+        // A name, not an ordinal: Format(x, 0, 9) once put enum positions on the wire. No flavour is
+        // sent -- the engine writes the stripping ticket by default, and the Preps template is not
+        // offered from Business Central.
         JsonHelper.AddText(RequestObject, 'version', EnumNames.JdfVersion(Setup."Jdf Version"));
-        JsonHelper.AddText(RequestObject, 'flavour', EnumNames.JdfFlavour(Setup."Jdf Flavour"));
         RequestObject.WriteTo(RequestText);
 
         Client.SetTransport(TransportType);
@@ -131,7 +130,6 @@ codeunit 50543 "PEQI Commit Manager"
         JdfTicket."Entry No." := ImpositionJob."Entry No.";
         JdfTicket."Job Id" := CopyStr(JobId(ImpositionJob, Setup), 1, MaxStrLen(JdfTicket."Job Id"));
         JdfTicket."Solution Id" := CopyStr(JsonHelper.ReadText(Envelope, 'solutionId'), 1, MaxStrLen(JdfTicket."Solution Id"));
-        JdfTicket.Flavour := Setup."Jdf Flavour";
         JdfTicket."Jdf Version" := Setup."Jdf Version";
         JdfTicket."File Name" := CopyStr(JsonHelper.ReadText(Envelope, 'fileName'), 1, MaxStrLen(JdfTicket."File Name"));
         JdfTicket.Sha256 := CopyStr(JsonHelper.ReadText(Envelope, 'sha256'), 1, MaxStrLen(JdfTicket.Sha256));

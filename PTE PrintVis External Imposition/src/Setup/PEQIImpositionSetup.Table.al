@@ -46,7 +46,6 @@ table 50500 "PEQI Imposition Setup"
             MaxValue = 50;
         }
         field(22; "Jdf Version"; Enum "PEQI Jdf Version") { Caption = 'JDF Version'; }
-        field(23; "Jdf Flavour"; Enum "PEQI Jdf Flavour") { Caption = 'JDF Flavour'; }
         field(24; "Job Id Format"; Text[50])
         {
             Caption = 'Job ID Format';

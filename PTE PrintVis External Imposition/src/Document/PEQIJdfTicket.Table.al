@@ -28,7 +28,6 @@ table 50507 "PEQI Jdf Ticket"
         field(13; "Entry No."; Integer) { Caption = 'Entry No.'; }
         field(20; "Job Id"; Text[64]) { Caption = 'JDF Job ID'; }
         field(21; "Solution Id"; Text[100]) { Caption = 'Solution Id'; }
-        field(22; Flavour; Enum "PEQI Jdf Flavour") { Caption = 'Flavour'; }
         field(23; "Jdf Version"; Enum "PEQI Jdf Version") { Caption = 'JDF Version'; }
         field(24; "File Name"; Text[250]) { Caption = 'File Name'; }
         field(25; Sha256; Text[64]) { Caption = 'SHA256'; }
