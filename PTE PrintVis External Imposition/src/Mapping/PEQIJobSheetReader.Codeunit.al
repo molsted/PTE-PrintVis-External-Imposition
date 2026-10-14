@@ -85,7 +85,12 @@ codeunit 50565 "PEQI Job Sheet Reader"
             Position := 1;
             while (Position <= Sorted.Count()) and (Sorted.Get(Position) < Id) do
                 Position += 1;
-            Sorted.Insert(Position, Id);
+            // List.Insert takes a position inside the list only; one past the end -- which is
+            // where the first id always goes -- is an Add.
+            if Position > Sorted.Count() then
+                Sorted.Add(Id)
+            else
+                Sorted.Insert(Position, Id);
         end;
         Ids := Sorted;
     end;

@@ -194,6 +194,38 @@ codeunit 50617 "PEQI Sheet Tests"
         Assert.AreEqual(TestData.SheetIdFor(8008, 2), JsonHelper.ReadInteger(Token.AsObject(), 'id'), 'Paper B comes second');
     end;
 
+    [Test]
+    procedure SheetsReferencedInDescendingOrderAreSortedAscending()
+    var
+        JobItem: Record "PVS Job Item";
+        Sheets: JsonArray;
+        Token: JsonToken;
+    begin
+        // [GIVEN] two job items on two papers, the first pointing at the higher Sheet ID
+        TestData.AddPaperItem('PAPER-A', 'Paper A');
+        TestData.AddPaperItem('PAPER-B', 'Paper B');
+        TestData.AddComponentType('BODY', 'Body', "PEQI Component Grain Rule"::ParallelToSpine);
+        TestData.AddComponentType('COVER', 'Cover', "PEQI Component Grain Rule"::ParallelToSpine);
+        TestData.AddJobItem(8009, 1, 1, 1, 'BODY', 16, 210, 297, 'PAPER-A');
+        TestData.AddJobItem(8009, 1, 1, 2, 'COVER', 4, 430, 297, 'PAPER-B');
+        JobItem.Get(8009, 1, 1, 1, 1);
+        JobItem."Sheet ID" := TestData.SheetIdFor(8009, 2);
+        JobItem.Modify(false);
+        JobItem.Get(8009, 1, 1, 2, 2);
+        JobItem."Sheet ID" := TestData.SheetIdFor(8009, 1);
+        JobItem.Modify(false);
+
+        // [WHEN] the sheets half is built
+        Sheets := CatalogMapper.BuildSheets(8009, 1, 1);
+
+        // [THEN] the substrates come out ascending, whatever order the job items name them in
+        Assert.AreEqual(2, Sheets.Count(), 'Two papers are two substrates');
+        Sheets.Get(0, Token);
+        Assert.AreEqual(TestData.SheetIdFor(8009, 1), JsonHelper.ReadInteger(Token.AsObject(), 'id'), 'The lower Sheet ID comes first');
+        Sheets.Get(1, Token);
+        Assert.AreEqual(TestData.SheetIdFor(8009, 2), JsonHelper.ReadInteger(Token.AsObject(), 'id'), 'The higher Sheet ID comes second');
+    end;
+
     local procedure FirstObject(Sheets: JsonArray): JsonObject
     var
         Token: JsonToken;
