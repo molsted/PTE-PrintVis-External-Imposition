@@ -89,3 +89,25 @@ enum 50554 "PEQI Component Grain Rule"
     value(1; Any) { Caption = 'Any'; }
     value(2; ParallelToSpine) { Caption = 'Parallel to spine'; }
 }
+
+/// <summary>How much a setup finding matters. A blocking finding breaks every job, so the setup
+/// guide stays incomplete while one remains; a warning breaks only the jobs that use what it
+/// names.</summary>
+enum 50565 "PEQI Finding Severity"
+{
+    Extensible = false;
+    value(0; Blocking) { Caption = 'Blocking'; }
+    value(1; Warning) { Caption = 'Warning'; }
+}
+
+/// <summary>The part of the setup a finding is about, one per checking step of the setup guide.</summary>
+enum 50566 "PEQI Setup Area"
+{
+    Extensible = false;
+    value(0; Connection) { Caption = 'Connection'; }
+    value(1; ComponentTypes) { Caption = 'Component types'; }
+    value(2; FinishingTypes) { Caption = 'Finishing types'; }
+    value(3; Presses) { Caption = 'Presses'; }
+    value(4; PaperAndUnits) { Caption = 'Paper and units'; }
+    value(5; Permissions) { Caption = 'Permissions'; }
+}

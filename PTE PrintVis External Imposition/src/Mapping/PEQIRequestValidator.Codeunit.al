@@ -21,18 +21,12 @@ codeunit 50538 "PEQI Request Validator"
         NoFinishingMsg: Label 'Job %1/%2/%3 has no finishing code on the job or on any of its sheets.', Comment = '%1 case, %2 job, %3 version';
         MixedFinishingMsg: Label 'The sheets of job %1/%2/%3 have different finishing codes (%4). Set the finishing on the job to choose one binding.', Comment = '%1 case, %2 job, %3 version, %4 comma-separated finishing codes';
         NoComponentTypeMsg: Label 'Component type %1 does not exist in PrintVis.', Comment = '%1 component type';
-        NoProductTypeMsg: Label 'Component type %1 has no JDF Product Type.', Comment = '%1 component type';
-        GrainNotSetMsg: Label 'Component type %1 has no imposition grain rule.', Comment = '%1 component type';
         NoSheetMsg: Label 'Job item %1 of component %2 has no sheet in PrintVis.', Comment = '%1 job item no., %2 component';
         NoSheetPaperMsg: Label 'Sheet %1 of component %2 has no paper item.', Comment = '%1 sheet id, %2 component';
         MissingPaperItemMsg: Label 'Sheet %1 of component %2 names paper item %3, which does not exist.', Comment = '%1 sheet id, %2 component, %3 item no.';
         NoSheetFormatMsg: Label 'Sheet %1 of component %2 has no printing format (Length x Width).', Comment = '%1 sheet id, %2 component';
-        NoPressMsg: Label 'No cost center configuration is marked Use for Imposition.', Locked = false;
-        NoPressFormatMsg: Label 'Press %1 %2 is marked for imposition but its configuration has no maximum printing format.', Comment = '%1 cost centre, %2 configuration';
-        NoPressIdMsg: Label 'Press %1 %2 is marked for imposition but has no press id. Untick and tick Use for Imposition to assign one.', Comment = '%1 cost centre, %2 configuration';
         SheetClashMsg: Label 'Component %1 spans two sheets: sheet %2 (%3, %4 x %5) and sheet %6 (%7, %8 x %9). A part is imposed on one stock, so put its job items on one paper at one printing format.', Comment = '%1 component, %2 %6 sheet ids, %3 %7 paper item nos, %4 %5 %8 %9 Length and Width';
-        BottomBindingMsg: Label 'Finishing type %1 is bound at the bottom edge, which the engine does not impose. It binds left, right or top.', Comment = '%1 finishing code';
-        SharedPressIdMsg: Label 'Press %1 %2 shares its press id with another configuration, probably because it was copied. Untick and tick Use for Imposition to give it its own.', Comment = '%1 cost centre, %2 configuration';
+        Checks: Codeunit "PEQI Setup Checks";
 
     /// <summary>Collects every problem rather than stopping at the first, so an
     /// operator fixes them in one visit. True when the request may be built.</summary>
@@ -49,10 +43,8 @@ codeunit 50538 "PEQI Request Validator"
     var
         PVSJob: Record "PVS Job";
         FinishingType: Record "PVS Finishing Types";
-        EnumNames: Codeunit "PEQI Enum Names";
         FinishingCode: Code[20];
         Problem: Text;
-        Cip4Problem: Text;
     begin
         if not PVSJob.Get(CaseId, JobNo, VersionNo) then
             exit;
@@ -61,15 +53,10 @@ codeunit 50538 "PEQI Request Validator"
         else
             if not FinishingType.Get(FinishingCode) then
                 Problems.Add(StrSubstNo(NoFinishingTypeMsg, FinishingCode))
-            else begin
-                Cip4Problem := EnumNames.Cip4BindingProblem(
-                    EnumNames.OptionMemberName(FinishingType, FinishingType.FieldNo("CIP4 Binding")), FinishingCode);
-                if Cip4Problem <> '' then
-                    Problems.Add(Cip4Problem);
-                // Refused here, where the planner is told, and not mid-build by BindingSideFromCip4.
-                if EnumNames.OptionMemberName(FinishingType, FinishingType.FieldNo("CIP4 BindingSide")) = 'Bottom' then
-                    Problems.Add(StrSubstNo(BottomBindingMsg, FinishingCode));
-            end;
+            else
+                // The imposition code's spine side, when the job has one, is what the builder sends,
+                // so a bottom side on the finishing type is only a problem without it.
+                Checks.FinishingTypeProblems(FinishingType, ImpositionCodeSpineSide(CaseId, JobNo, VersionNo) <> '', Problems);
     end;
 
     /// <summary>The finishing code that decides the binding. PrintVis holds it on the
@@ -109,6 +96,31 @@ codeunit 50538 "PEQI Request Validator"
         exit(Problem = '');
     end;
 
+    /// <summary>The spine side the job's own imposition code states -- Left or Right -- or blank
+    /// when no job item names an imposition code. It wins over the finishing type's CIP4
+    /// BindingSide: the builder sends it first, and the bottom-side check skips a job that has it.</summary>
+    procedure ImpositionCodeSpineSide(CaseId: Integer; JobNo: Integer; VersionNo: Integer): Text
+    var
+        JobItem: Record "PVS Job Item";
+        ImpositionCode: Record "PVS Imposition Code";
+    begin
+        JobItem.SetRange(ID, CaseId);
+        JobItem.SetRange(Job, JobNo);
+        JobItem.SetRange(Version, VersionNo);
+        // "Active" is deliberately not filtered on: PrintVis leaves it false on rows that print.
+        JobItem.SetFilter("Imposition Type", '<>%1', '');
+        if JobItem.FindFirst() then
+            if ImpositionCode.Get(JobItem."Imposition Type") then
+                // PVS Imposition Code."Spine Side" is Left,Right only.
+                case ImpositionCode."Spine Side" of
+                    ImpositionCode."Spine Side"::Left:
+                        exit('Left');
+                    ImpositionCode."Spine Side"::Right:
+                        exit('Right');
+                end;
+        exit('');
+    end;
+
     local procedure JoinCodes(Codes: List of [Code[20]]) Joined: Text
     var
         FinishingCode: Code[20];
@@ -127,7 +139,6 @@ codeunit 50538 "PEQI Request Validator"
         JobSheet: Record "PVS Job Sheet";
         FirstSheet: Record "PVS Job Sheet";
         Item: Record Item;
-        EnumNames: Codeunit "PEQI Enum Names";
         Reader: Codeunit "PEQI Job Sheet Reader";
         Seen: List of [Code[20]];
         ClashReported: List of [Code[20]];
@@ -153,12 +164,8 @@ codeunit 50538 "PEQI Request Validator"
                 Seen.Add(ComponentType);
                 if not ComponentTypeRec.Get(ComponentType) then
                     Problems.Add(StrSubstNo(NoComponentTypeMsg, ComponentType))
-                else begin
-                    if EnumNames.OptionMemberName(ComponentTypeRec, ComponentTypeRec.FieldNo("JDF Product Type")) = 'Unknown' then
-                        Problems.Add(StrSubstNo(NoProductTypeMsg, ComponentType));
-                    if ComponentTypeRec."PEQI Grain Rule" = ComponentTypeRec."PEQI Grain Rule"::NotSet then
-                        Problems.Add(StrSubstNo(GrainNotSetMsg, ComponentType));
-                end;
+                else
+                    Checks.ComponentTypeProblems(ComponentTypeRec, Problems);
             end;
 
             // The sheet the CSR put the job item on. Each failure names the sheet, because the fix
@@ -193,22 +200,7 @@ codeunit 50538 "PEQI Request Validator"
     end;
 
     local procedure ValidatePresses(var Problems: List of [Text])
-    var
-        Config: Record "PVS Cost Center Configuration";
     begin
-        Config.SetRange("PEQI Use for Imposition", true);
-        if not Config.FindSet() then begin
-            Problems.Add(NoPressMsg);
-            exit;
-        end;
-        repeat
-            if (Config."Max Printing Format Width" <= 0) or (Config."Max Printing Format Length" <= 0) then
-                Problems.Add(StrSubstNo(NoPressFormatMsg, Config."Cost Center Code", Config.Configuration));
-            if IsNullGuid(Config."PEQI Press Id") then
-                Problems.Add(StrSubstNo(NoPressIdMsg, Config."Cost Center Code", Config.Configuration))
-            else
-                if Config.PEQIPressIdHeldByAnother(true) then
-                    Problems.Add(StrSubstNo(SharedPressIdMsg, Config."Cost Center Code", Config.Configuration));
-        until Config.Next() = 0;
+        Checks.MarkedPressProblems(Problems);
     end;
 }

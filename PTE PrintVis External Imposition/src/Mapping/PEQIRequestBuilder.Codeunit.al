@@ -138,25 +138,12 @@ codeunit 50535 "PEQI Request Builder"
     /// CIP4 BindingSide, then Left.</summary>
     local procedure BindingSide(CaseId: Integer; JobNo: Integer; VersionNo: Integer; FinishingType: Record "PVS Finishing Types"): Text
     var
-        JobItem: Record "PVS Job Item";
-        ImpositionCode: Record "PVS Imposition Code";
+        FromImposition: Text;
         FromFinishing: Text;
     begin
-        JobItem.SetRange(ID, CaseId);
-        JobItem.SetRange(Job, JobNo);
-        JobItem.SetRange(Version, VersionNo);
-        // "Active" is deliberately not filtered on: PrintVis leaves it false on rows that print.
-        JobItem.SetFilter("Imposition Type", '<>%1', '');
-        if JobItem.FindFirst() then
-            if ImpositionCode.Get(JobItem."Imposition Type") then
-                // PVS Imposition Code."Spine Side" is Left,Right only.
-                case ImpositionCode."Spine Side" of
-                    ImpositionCode."Spine Side"::Left:
-                        exit('Left');
-                    ImpositionCode."Spine Side"::Right:
-                        exit('Right');
-                end;
-
+        FromImposition := Validator.ImpositionCodeSpineSide(CaseId, JobNo, VersionNo);
+        if FromImposition <> '' then
+            exit(FromImposition);
         FromFinishing := EnumNames.BindingSideFromCip4(EnumNames.OptionMemberName(FinishingType, FinishingType.FieldNo("CIP4 BindingSide")));
         if FromFinishing <> '' then
             exit(FromFinishing);

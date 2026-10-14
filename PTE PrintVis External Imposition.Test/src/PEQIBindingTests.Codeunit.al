@@ -188,6 +188,37 @@ codeunit 50620 "PEQI Binding Tests"
         Assert.IsTrue(ProblemsMention(Problems, 'FOOTBOUND'), 'The finishing type is named');
     end;
 
+    [Test]
+    procedure ABottomSideIsAcceptedWhenTheImpositionCodeStatesTheSpine()
+    var
+        ImpositionCode: Record "PVS Imposition Code";
+        JobItem: Record "PVS Job Item";
+        Problems: List of [Text];
+        RequestObject: JsonObject;
+    begin
+        // [GIVEN] a finishing type bound at the bottom, on a job whose imposition code states a left spine
+        AddBuildableJob(6210, 'FOOTBOUND2');
+        TestData.AddFinishingType('FOOTBOUND2', 'SaddleStitch', 'Bottom');
+        if not ImpositionCode.Get('IMP-LEFT') then begin
+            ImpositionCode.Init();
+            ImpositionCode.Code := 'IMP-LEFT';
+            ImpositionCode."Spine Side" := ImpositionCode."Spine Side"::Left;
+            ImpositionCode.Insert(false);
+        end;
+        JobItem.SetRange(ID, 6210);
+        JobItem.FindFirst();
+        JobItem."Imposition Type" := 'IMP-LEFT';
+        JobItem.Modify(false);
+
+        // [WHEN] the job is validated and built
+        Validator.Validate(6210, 1, 1, Problems);
+        RequestObject := RequestBuilder.BuildObject(6210, 1, 1);
+
+        // [THEN] the bottom side is not refused, because nothing reads it for this job
+        Assert.IsFalse(ProblemsMention(Problems, 'FOOTBOUND2'), 'An overridden bottom side is not refused');
+        Assert.AreEqual('Left', JsonHelper.ReadText(RequestObject, 'bindingSide'), 'The imposition code decides');
+    end;
+
     local procedure ProblemsMention(Problems: List of [Text]; Needle: Text): Boolean
     var
         Problem: Text;
