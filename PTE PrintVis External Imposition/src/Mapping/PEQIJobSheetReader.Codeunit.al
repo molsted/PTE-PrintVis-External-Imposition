@@ -80,17 +80,24 @@ codeunit 50565 "PEQI Job Sheet Reader"
         Sorted: List of [Integer];
         Id: Integer;
         Position: Integer;
+        Placed: Boolean;
     begin
+        // AL evaluates both sides of an "and", so a loop guarded by "Position <= Count and
+        // Get(Position) < Id" still calls Get one past the end. Get is only reached inside the
+        // loop here, where the position is known to be in the list.
         foreach Id in Ids do begin
             Position := 1;
-            while (Position <= Sorted.Count()) and (Sorted.Get(Position) < Id) do
-                Position += 1;
-            // List.Insert takes a position inside the list only; one past the end -- which is
-            // where the first id always goes -- is an Add.
-            if Position > Sorted.Count() then
-                Sorted.Add(Id)
-            else
-                Sorted.Insert(Position, Id);
+            Placed := false;
+            while (not Placed) and (Position <= Sorted.Count()) do
+                if Sorted.Get(Position) >= Id then begin
+                    Sorted.Insert(Position, Id);
+                    Placed := true;
+                end else
+                    Position += 1;
+            // Larger than everything so far, the first id included: Insert takes a position
+            // inside the list only, so this one is added at the end.
+            if not Placed then
+                Sorted.Add(Id);
         end;
         Ids := Sorted;
     end;
