@@ -44,7 +44,7 @@ page 50525 "PEQI Guide Presses"
                 field("PEQI Work And Back"; Rec."PEQI Work And Back") { ToolTip = 'This press can print work-and-back.'; }
                 field("PEQI Work And Turn"; Rec."PEQI Work And Turn") { ToolTip = 'This press can print work-and-turn.'; }
                 field("PEQI Work And Tumble"; Rec."PEQI Work And Tumble") { ToolTip = 'This press can print work-and-tumble.'; }
-                field("PEQI Perfecting"; Rec."PEQI Perfecting") { ToolTip = 'This press perfects both sides in one pass.'; }
+                field("Perfection Printing"; Rec."Perfection Printing") { Editable = false; ToolTip = 'PrintVis''s Perfection Printing: the press prints both sides in one pass. Sent as the Perfecting work style. Change it in the configuration''s own PrintVis fields.'; }
                 field("Max Printing Format Length"; Rec."Max Printing Format Length") { Editable = false; CaptionClass = Units.FormatCaptionClass('Max Printing Format Length'); ToolTip = 'PrintVis''s maximum printing format. Change it on the Cost Center Card.'; }
                 field("Max Printing Format Width"; Rec."Max Printing Format Width") { Editable = false; CaptionClass = Units.FormatCaptionClass('Max Printing Format Width'); ToolTip = 'PrintVis''s maximum printing format. Change it on the Cost Center Card.'; }
                 field(ProblemText; ProblemText)

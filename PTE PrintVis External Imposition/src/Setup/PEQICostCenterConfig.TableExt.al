@@ -69,7 +69,6 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
         field(50516; "PEQI Work And Back"; Boolean) { InitValue = true; Caption = 'Work and Back'; DataClassification = CustomerContent; }
         field(50517; "PEQI Work And Turn"; Boolean) { Caption = 'Work and Turn'; DataClassification = CustomerContent; }
         field(50518; "PEQI Work And Tumble"; Boolean) { Caption = 'Work and Tumble'; DataClassification = CustomerContent; }
-        field(50519; "PEQI Perfecting"; Boolean) { Caption = 'Perfecting'; DataClassification = CustomerContent; }
         field(50520; "PEQI Digital Subtype"; Enum "PEQI Digital Subtype") { Caption = 'Digital Subtype'; DataClassification = CustomerContent; }
         field(50521; "PEQI Make"; Text[100]) { Caption = 'Make'; DataClassification = CustomerContent; }
         field(50522; "PEQI Model"; Text[100]) { Caption = 'Model'; DataClassification = CustomerContent; }
@@ -95,7 +94,8 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
         exit(not Other.IsEmpty());
     end;
 
-    /// <summary>The work styles this press declares, as engine spellings.</summary>
+    /// <summary>The work styles this press declares, as engine spellings. Perfecting is PrintVis's
+    /// own Perfection Printing, the field that already says the press prints both sides in one pass.</summary>
     procedure PEQIWorkStyleList(): List of [Text]
     var
         Styles: List of [Text];
@@ -104,7 +104,7 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
         if "PEQI Work And Back" then Styles.Add('WorkAndBack');
         if "PEQI Work And Turn" then Styles.Add('WorkAndTurn');
         if "PEQI Work And Tumble" then Styles.Add('WorkAndTumble');
-        if "PEQI Perfecting" then Styles.Add('Perfecting');
+        if "Perfection Printing" then Styles.Add('Perfecting');
         exit(Styles);
     end;
 }

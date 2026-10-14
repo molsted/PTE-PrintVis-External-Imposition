@@ -41,7 +41,7 @@ page 50521 "PEQI Press Configurations"
                 field("PEQI Work And Back"; Rec."PEQI Work And Back") { ToolTip = 'This press can print work-and-back.'; }
                 field("PEQI Work And Turn"; Rec."PEQI Work And Turn") { ToolTip = 'This press can print work-and-turn.'; }
                 field("PEQI Work And Tumble"; Rec."PEQI Work And Tumble") { ToolTip = 'This press can print work-and-tumble.'; }
-                field("PEQI Perfecting"; Rec."PEQI Perfecting") { ToolTip = 'This press perfects both sides in one pass.'; }
+                field("Perfection Printing"; Rec."Perfection Printing") { Editable = false; ToolTip = 'PrintVis''s Perfection Printing: the press prints both sides in one pass. Sent as the Perfecting work style. Change it in the configuration''s own PrintVis fields.'; }
                 field("PEQI Non-Printable Top"; Rec."PEQI Non-Printable Top") { CaptionClass = Units.MarginCaptionClass('Non-Printable Top'); Visible = false; ToolTip = 'Strip at the top that cannot be printed.'; }
                 field("PEQI Non-Printable Bottom"; Rec."PEQI Non-Printable Bottom") { CaptionClass = Units.MarginCaptionClass('Non-Printable Bottom'); Visible = false; ToolTip = 'Strip at the bottom that cannot be printed.'; }
                 field("PEQI Non-Printable Left"; Rec."PEQI Non-Printable Left") { CaptionClass = Units.MarginCaptionClass('Non-Printable Left'); Visible = false; ToolTip = 'Strip at the left that cannot be printed.'; }

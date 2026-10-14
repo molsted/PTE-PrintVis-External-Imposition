@@ -329,6 +329,35 @@ codeunit 50618 "PEQI Press Tests"
         Assert.AreEqual(Config."PEQI Gripper Edge Side"::Top, Config."PEQI Gripper Edge Side", 'A side already chosen is not overwritten');
     end;
 
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure PerfectionPrintingIsThePerfectingWorkStyle()
+    var
+        Config: Record "PVS Cost Center Configuration";
+        Presses: JsonArray;
+        Press: JsonObject;
+        Styles: JsonArray;
+        Style: JsonToken;
+        Found: Boolean;
+    begin
+        // [GIVEN] a press PrintVis records as perfecting
+        TestData.AddPressConfig('PRESS-PERF', 'STD');
+        Config.Get('PRESS-PERF', 'STD');
+        Config."Perfection Printing" := true;
+        Config.Modify(false);
+
+        // [WHEN] the presses half is built
+        Presses := CatalogMapper.BuildPresses();
+        Assert.IsTrue(PressNamed(Presses, 'PRESS-PERF', Press), 'The press is built');
+        JsonHelper.ReadArray(Press, 'workStyles', Styles);
+
+        // [THEN] Perfecting is among its work styles
+        foreach Style in Styles do
+            if Style.AsValue().AsText() = 'Perfecting' then
+                Found := true;
+        Assert.IsTrue(Found, 'Perfection Printing sends the Perfecting work style');
+    end;
+
     /// <summary>The press built for a cost center. PressName falls back to the cost-center code
     /// when the configuration has no Name, which is the case for every test configuration.</summary>
     local procedure PressNamed(Presses: JsonArray; CostCenterCode: Text; var Press: JsonObject): Boolean
