@@ -23,10 +23,9 @@ using System.Security.AccessControl;
 /// disagree about the same component type, finishing type or press.
 /// </para>
 /// <para>
-/// <see cref="PressSetupGaps"/> is the exception, and on purpose: the engine solves a press with
-/// no gripper side and derives work styles when none are sent, so a job is not refused for
-/// either -- that would refuse jobs that solve today. The guide still counts them as blocking,
-/// because a press without them is not set up.
+/// <see cref="PressSetupGaps"/> is the exception, and on purpose: the engine derives work styles
+/// when none are sent, so a job is not refused for a press that declares none -- that would refuse
+/// jobs that solve today. The guide still counts it as blocking, because such a press is not set up.
 /// </para>
 /// </remarks>
 codeunit 50566 "PEQI Setup Checks"
@@ -40,7 +39,6 @@ codeunit 50566 "PEQI Setup Checks"
         NoPressFormatMsg: Label 'Press %1 (configuration %2) is marked for imposition but has no maximum printing format in PrintVis.', Comment = '%1 cost centre, %2 configuration';
         NoPressIdMsg: Label 'Press %1 (configuration %2) is marked for imposition but has no press id. Untick and tick Use for Imposition to assign one.', Comment = '%1 cost centre, %2 configuration';
         SharedPressIdMsg: Label 'Press %1 (configuration %2) shares its press id with another configuration, probably because it was copied. Untick and tick Use for Imposition to give it its own.', Comment = '%1 cost centre, %2 configuration';
-        NoGripperSideMsg: Label 'Press %1 (configuration %2) is marked for imposition but has no gripper edge side.', Comment = '%1 cost centre, %2 configuration';
         NoWorkStyleMsg: Label 'Press %1 (configuration %2) is marked for imposition but allows no work style.', Comment = '%1 cost centre, %2 configuration';
         TransportType: Enum "PEQI Transport Type";
         NoEngineUrlMsg: Label 'The engine base URL is not set, so no job can be solved.';
@@ -98,8 +96,6 @@ codeunit 50566 "PEQI Setup Checks"
     /// as set up. Not asked by the validator -- see the codeunit's remarks.</summary>
     procedure PressSetupGaps(Config: Record "PVS Cost Center Configuration"; var Problems: List of [Text])
     begin
-        if Config."PEQI Gripper Edge Side" = Config."PEQI Gripper Edge Side"::" " then
-            Problems.Add(StrSubstNo(NoGripperSideMsg, Config."Cost Center Code", Config.Configuration));
         if Config.PEQIWorkStyleList().Count() = 0 then
             Problems.Add(StrSubstNo(NoWorkStyleMsg, Config."Cost Center Code", Config.Configuration));
     end;

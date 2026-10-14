@@ -121,32 +121,29 @@ codeunit 50623 "PEQI Setup Check Tests"
 
     [Test]
     [TransactionModel(TransactionModel::AutoRollback)]
-    procedure PressSetupGapsNameTheGripperSideAndTheWorkStyles()
+    procedure PressSetupGapsNameTheWorkStyles()
     var
         Config: Record "PVS Cost Center Configuration";
         Problems: List of [Text];
     begin
-        // [GIVEN] a marked press whose gripper side was cleared, and no work style
+        // [GIVEN] a marked press with no work style
         TestData.AddPressConfig('SC-GAPS', 'STD');
         Config.Get('SC-GAPS', 'STD');
-        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::" ";
         Config."PEQI Simplex" := false;
         Config."PEQI Work And Back" := false;
         Config.Modify(false);
 
         Checks.PressSetupGaps(Config, Problems);
-        Assert.AreEqual(2, Problems.Count(), 'Both gaps are reported');
-        Assert.IsTrue(StrPos(Checks.JoinProblems(Problems), 'gripper') > 0, 'The gripper side is named');
+        Assert.AreEqual(1, Problems.Count(), 'The missing work style is the one gap');
         Assert.IsTrue(StrPos(Checks.JoinProblems(Problems), 'work style') > 0, 'The work styles are named');
 
-        // [WHEN] both are filled in
-        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::Left;
+        // [WHEN] one is ticked
         Config."PEQI Simplex" := true;
         Clear(Problems);
         Checks.PressSetupGaps(Config, Problems);
 
         // [THEN] nothing is left
-        Assert.AreEqual(0, Problems.Count(), 'A press with a gripper side and a work style has no gaps');
+        Assert.AreEqual(0, Problems.Count(), 'A press with a work style has no gaps');
     end;
 
     [Test]
@@ -262,24 +259,6 @@ codeunit 50623 "PEQI Setup Check Tests"
 
     [Test]
     [TransactionModel(TransactionModel::AutoRollback)]
-    procedure AMarkedPressWithoutAGripperSideIsBlocking()
-    var
-        Config: Record "PVS Cost Center Configuration";
-        Findings: Record "PEQI Setup Finding" temporary;
-    begin
-        // [GIVEN] a marked press whose gripper side was cleared
-        TestData.AddPressConfig('SC-NOGRIP', 'STD');
-        Config.Get('SC-NOGRIP', 'STD');
-        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::" ";
-        Config.Modify(false);
-
-        Checks.Collect(Findings, false);
-
-        Assert.IsTrue(FindFinding(Findings, "PEQI Setup Area"::Presses, "PEQI Finding Severity"::Blocking, 'SC-NOGRIP', 'gripper'), 'A missing gripper side is blocking');
-    end;
-
-    [Test]
-    [TransactionModel(TransactionModel::AutoRollback)]
     procedure AMarkedPressWithoutAWorkStyleIsBlocking()
     var
         Config: Record "PVS Cost Center Configuration";
@@ -287,7 +266,6 @@ codeunit 50623 "PEQI Setup Check Tests"
     begin
         TestData.AddPressConfig('SC-NOSTYLE', 'STD');
         Config.Get('SC-NOSTYLE', 'STD');
-        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::Left;
         Config."PEQI Simplex" := false;
         Config."PEQI Work And Back" := false;
         Config.Modify(false);

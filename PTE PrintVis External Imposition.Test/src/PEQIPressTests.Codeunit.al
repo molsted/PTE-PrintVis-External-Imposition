@@ -291,46 +291,6 @@ codeunit 50618 "PEQI Press Tests"
 
     [Test]
     [TransactionModel(TransactionModel::AutoRollback)]
-    procedure MarkingAConfigurationWithNoGripperSideSetsBottom()
-    var
-        Config: Record "PVS Cost Center Configuration";
-    begin
-        // [GIVEN] an unmarked configuration with no gripper side, as one from before the field would be
-        TestData.AddPressConfig('PRESS-GRIP', 'STD');
-        Config.Get('PRESS-GRIP', 'STD');
-        Config.Validate("PEQI Use for Imposition", false);
-        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::" ";
-        Config.Modify(false);
-
-        // [WHEN] it is marked for imposition
-        Config.Validate("PEQI Use for Imposition", true);
-
-        // [THEN] it grips at the bottom
-        Assert.AreEqual(Config."PEQI Gripper Edge Side"::Bottom, Config."PEQI Gripper Edge Side", 'Marking a press sets the default gripper side');
-    end;
-
-    [Test]
-    [TransactionModel(TransactionModel::AutoRollback)]
-    procedure MarkingAConfigurationKeepsAGripperSideAlreadySet()
-    var
-        Config: Record "PVS Cost Center Configuration";
-    begin
-        // [GIVEN] an unmarked configuration that grips at the top
-        TestData.AddPressConfig('PRESS-TOP', 'STD');
-        Config.Get('PRESS-TOP', 'STD');
-        Config.Validate("PEQI Use for Imposition", false);
-        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::Top;
-        Config.Modify(false);
-
-        // [WHEN] it is marked for imposition
-        Config.Validate("PEQI Use for Imposition", true);
-
-        // [THEN] its own side is kept
-        Assert.AreEqual(Config."PEQI Gripper Edge Side"::Top, Config."PEQI Gripper Edge Side", 'A side already chosen is not overwritten');
-    end;
-
-    [Test]
-    [TransactionModel(TransactionModel::AutoRollback)]
     procedure PerfectionPrintingIsThePerfectingWorkStyle()
     var
         Config: Record "PVS Cost Center Configuration";
@@ -356,6 +316,76 @@ codeunit 50618 "PEQI Press Tests"
             if Style.AsValue().AsText() = 'Perfecting' then
                 Found := true;
         Assert.IsTrue(Found, 'Perfection Printing sends the Perfecting work style');
+    end;
+
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure ABottomGripperIsSentAsBottomWithNoTrailingEdge()
+    var
+        Config: Record "PVS Cost Center Configuration";
+        Presses: JsonArray;
+        Press: JsonObject;
+    begin
+        // [GIVEN] a press with a gripper allowance, gripping at the bottom as every press starts
+        TestData.AddPressConfig('PRESS-GB', 'STD');
+        Config.Get('PRESS-GB', 'STD');
+        Config."Gripper Edge" := 10;
+        Config.Modify(false);
+
+        Presses := CatalogMapper.BuildPresses();
+        Assert.IsTrue(PressNamed(Presses, 'PRESS-GB', Press), 'The press is built');
+
+        // [THEN] the gripper is at the bottom and the top is not reserved
+        Assert.AreEqual('Bottom', JsonHelper.ReadText(Press, 'gripperEdge'), 'The gripper is sent as Bottom');
+        Assert.IsFalse(Press.Contains('trailingMarginMm'), 'A bottom gripper reserves no trailing edge of its own');
+    end;
+
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure ABothGripperReservesTheTopToo()
+    var
+        Config: Record "PVS Cost Center Configuration";
+        Units: Codeunit "PEQI Unit Converter";
+        Presses: JsonArray;
+        Press: JsonObject;
+    begin
+        // [GIVEN] a press that grips at both ends
+        TestData.AddPressConfig('PRESS-G2', 'STD');
+        Config.Get('PRESS-G2', 'STD');
+        Config."Gripper Edge" := 10;
+        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::Both;
+        Config.Modify(false);
+
+        Presses := CatalogMapper.BuildPresses();
+        Assert.IsTrue(PressNamed(Presses, 'PRESS-G2', Press), 'The press is built');
+
+        // [THEN] a bottom gripper with the same allowance on the trailing edge, the top
+        Assert.AreEqual('Bottom', JsonHelper.ReadText(Press, 'gripperEdge'), 'Both is sent as a bottom gripper');
+        Assert.AreEqual(Units.MarginToMm(10), JsonHelper.ReadDecimal(Press, 'trailingMarginMm'), 'The top reserves the gripper allowance');
+    end;
+
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure ABothGripperKeepsALargerTrailingMargin()
+    var
+        Config: Record "PVS Cost Center Configuration";
+        Units: Codeunit "PEQI Unit Converter";
+        Presses: JsonArray;
+        Press: JsonObject;
+    begin
+        // [GIVEN] a press gripping at both ends whose own trailing margin is wider than the gripper
+        TestData.AddPressConfig('PRESS-G3', 'STD');
+        Config.Get('PRESS-G3', 'STD');
+        Config."Gripper Edge" := 10;
+        Config."PEQI Trailing Margin" := 14;
+        Config."PEQI Gripper Edge Side" := Config."PEQI Gripper Edge Side"::Both;
+        Config.Modify(false);
+
+        Presses := CatalogMapper.BuildPresses();
+        Assert.IsTrue(PressNamed(Presses, 'PRESS-G3', Press), 'The press is built');
+
+        // [THEN] the wider of the two is reserved, not the sum
+        Assert.AreEqual(Units.MarginToMm(14), JsonHelper.ReadDecimal(Press, 'trailingMarginMm'), 'The larger trailing margin is kept');
     end;
 
     /// <summary>The press built for a cost center. PressName falls back to the cost-center code

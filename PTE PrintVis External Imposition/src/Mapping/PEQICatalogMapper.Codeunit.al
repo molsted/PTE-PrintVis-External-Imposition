@@ -108,6 +108,28 @@ codeunit 50537 "PEQI Catalog Mapper"
         exit(A);
     end;
 
+    /// <summary>The allowance on the edge opposite the gripper, in millimetres; 0 for none.</summary>
+    /// <remarks>
+    /// The gripper is always sent as Bottom. A press that grips the sheet at both ends has no edge
+    /// the engine calls Both, so it is sent as a bottom gripper with at least the gripper's own
+    /// allowance on the top -- the trailing edge. A larger trailing margin of its own is kept. The
+    /// engine already mirrors the gripper onto the tail for Perfecting and Work and Tumble; Both is
+    /// for a press that reserves both ends whatever the work style.
+    /// </remarks>
+    local procedure TrailingMarginMm(Config: Record "PVS Cost Center Configuration"): Decimal
+    var
+        Trailing: Decimal;
+        Gripper: Decimal;
+    begin
+        Trailing := Units.MarginToMm(Config."PEQI Trailing Margin");
+        if Config."PEQI Gripper Edge Side" = Config."PEQI Gripper Edge Side"::Both then begin
+            Gripper := Units.MarginToMm(Config."Gripper Edge");
+            if Gripper > Trailing then
+                Trailing := Gripper;
+        end;
+        exit(Trailing);
+    end;
+
     /// <summary>Which edge the sheet is laid to, as the engine names edges.</summary>
     /// <remarks>
     /// <para>
@@ -173,13 +195,12 @@ codeunit 50537 "PEQI Catalog Mapper"
             JsonHelper.AddDecimalIfSet(Press, 'nonPrintableMarginRightMm', Units.MarginToMm(Config."PEQI Non-Printable Right"));
 
             JsonHelper.AddDecimalIfSet(Press, 'gripperMarginMm', Units.MarginToMm(Config."Gripper Edge"));
-            if Config."PEQI Gripper Edge Side" <> Config."PEQI Gripper Edge Side"::" " then
-                JsonHelper.AddText(Press, 'gripperEdge', EnumNames.PressEdge(Config."PEQI Gripper Edge Side"));
+            JsonHelper.AddText(Press, 'gripperEdge', 'Bottom');
             JsonHelper.AddDecimalIfSet(Press, 'sideLayMarginMm', Units.MarginToMm(Config.Pull));
             SideLay := SideLayEdge(Config);
             if SideLay <> '' then
                 JsonHelper.AddText(Press, 'sideLayEdge', SideLay);
-            JsonHelper.AddDecimalIfSet(Press, 'trailingMarginMm', Units.MarginToMm(Config."PEQI Trailing Margin"));
+            JsonHelper.AddDecimalIfSet(Press, 'trailingMarginMm', TrailingMarginMm(Config));
 
             // Both image-area bounds are needed for either to apply.
             if (Config."PEQI Max Image Area Width" <> 0) and (Config."PEQI Max Image Area Height" <> 0) then begin

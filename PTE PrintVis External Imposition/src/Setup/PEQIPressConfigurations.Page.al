@@ -34,7 +34,7 @@ page 50521 "PEQI Press Configurations"
             {
                 field(Configuration; Rec.Configuration) { Editable = false; ToolTip = 'The PrintVis configuration. Each one marked for imposition is a press.'; }
                 field("PEQI Use for Imposition"; Rec."PEQI Use for Imposition") { ToolTip = 'Offer this configuration to the imposition engine as a press.'; }
-                field("PEQI Gripper Edge Side"; Rec."PEQI Gripper Edge Side") { ToolTip = 'Which physical edge the gripper is on. PrintVis records the gripper as a measurement and never names its edge.'; }
+                field("PEQI Gripper Edge Side"; Rec."PEQI Gripper Edge Side") { ToolTip = 'Where the press grips the sheet, in its own orientation: Bottom, or Both when it reserves the gripper allowance at the top as well. PrintVis records the gripper as a measurement and never names its edge.'; }
                 field("Pull Side"; Rec."Pull Side") { Editable = false; ToolTip = 'The side the sheet is laid to, as PrintVis records it. Left and Right are sent as the side lay; Both sends none, so the engine treats the margins symmetrically. Change it in the configuration''s own PrintVis fields.'; }
                 field("PEQI Sheets Per Hour"; Rec."PEQI Sheets Per Hour") { ToolTip = 'Rated speed. Reported back to the planner; the solve does not use it.'; }
                 field("PEQI Simplex"; Rec."PEQI Simplex") { ToolTip = 'This press prints one side per pass.'; }

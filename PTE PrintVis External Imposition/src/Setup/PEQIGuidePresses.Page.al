@@ -39,7 +39,7 @@ page 50525 "PEQI Guide Presses"
                 field(Configuration; Rec.Configuration) { Editable = false; ToolTip = 'The PrintVis configuration. Each one marked for imposition is a press.'; }
                 field(Name; Rec.Name) { Editable = false; ToolTip = 'The configuration''s name in PrintVis, sent as the press name.'; }
                 field("PEQI Use for Imposition"; Rec."PEQI Use for Imposition") { ToolTip = 'Offer this configuration to the imposition engine as a press.'; }
-                field("PEQI Gripper Edge Side"; Rec."PEQI Gripper Edge Side") { ToolTip = 'Which physical edge the gripper is on. PrintVis records the gripper as a measurement and never names its edge.'; }
+                field("PEQI Gripper Edge Side"; Rec."PEQI Gripper Edge Side") { ToolTip = 'Where the press grips the sheet, in its own orientation: Bottom, or Both when it reserves the gripper allowance at the top as well. PrintVis records the gripper as a measurement and never names its edge.'; }
                 field("PEQI Simplex"; Rec."PEQI Simplex") { ToolTip = 'This press prints one side per pass.'; }
                 field("PEQI Work And Back"; Rec."PEQI Work And Back") { ToolTip = 'This press can print work-and-back.'; }
                 field("PEQI Work And Turn"; Rec."PEQI Work And Turn") { ToolTip = 'This press can print work-and-turn.'; }

@@ -187,21 +187,4 @@ codeunit 50546 "PEQI Enum Names"
         exit('Stripping');
     end;
 
-    /// <summary>The press edge, as free text the engine parses: Left, Right, Bottom, Top.</summary>
-    procedure PressEdge(Value: Enum "PEQI Press Edge"): Text
-    begin
-        case Value of
-            Value::Top:
-                exit('Top');
-            Value::Bottom:
-                exit('Bottom');
-            Value::Left:
-                exit('Left');
-            Value::Right:
-                exit('Right');
-        end;
-        // Blank. The caller only writes the field when an edge is set, and the engine reports
-        // an unreadable edge itself rather than guessing one.
-        exit('');
-    end;
 }

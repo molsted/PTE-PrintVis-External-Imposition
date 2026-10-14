@@ -26,15 +26,13 @@ enum 50551 "PEQI Press Type"
     value(1; Digital) { Caption = 'Digital'; }
 }
 
-enum 50553 "PEQI Press Edge"
+/// <summary>Where a press grips the sheet, in the press's own orientation. Bottom comes first so
+/// that every configuration, including those from before this field existed, starts at Bottom.</summary>
+enum 50567 "PEQI Gripper Side"
 {
     Extensible = false;
-    // Blank, not 'Unknown': an unset edge has to look unset.
-    value(0; " ") { Caption = ' '; }
-    value(1; Top) { Caption = 'Top'; }
-    value(2; Bottom) { Caption = 'Bottom'; }
-    value(3; Left) { Caption = 'Left'; }
-    value(4; Right) { Caption = 'Right'; }
+    value(0; Bottom) { Caption = 'Bottom'; }
+    value(1; Both) { Caption = 'Both (top and bottom)'; }
 }
 
 enum 50559 "PEQI Grain Policy"

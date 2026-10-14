@@ -30,14 +30,14 @@ Start with **Assisted Setup → Set up imposition** (also *Setup Guide* on the
 Imposition Setup page). It checks everything in the table below, lets you fix it in
 place, and stays unfinished on Assisted Setup while anything that would stop every
 job remains: no engine connection, no press marked for imposition, a marked press
-without a gripper side, work style or PrintVis format, or no Standard Units. A
+without a work style or PrintVis format, or no Standard Units. A
 component type or finishing type that is not set up is a warning — it stops only
 the jobs that use it.
 
 | Where | What to fill in |
 |---|---|
 | Imposition Setup | Engine URL, editor URL, API key, defaults, and the default trims used when a job item states none |
-| PVS Cost Center Card, **Imposition** section | One row per configuration: mark **Use for Imposition**, name the gripper edge side, state the work styles |
+| PVS Cost Center Card, **Imposition** section | One row per configuration: mark **Use for Imposition**, choose the gripper side (Bottom, or Both), state the work styles |
 | Component Types card | **JDF Product Type** and **Imposition Grain Rule** |
 | Finishing Types | **CIP4 Binding** and **CIP4 BindingSide** |
 

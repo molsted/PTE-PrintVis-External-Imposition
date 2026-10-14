@@ -203,7 +203,7 @@ page 50522 "PEQI Setup Guide"
                 group(PressesIntro)
                 {
                     Caption = 'Presses';
-                    InstructionalText = 'Every cost center configuration marked Use for Imposition is a press. Each needs a gripper edge side, at least one work style and a maximum printing format in PrintVis. Every other press setting is in the Imposition section of the Cost Center Card.';
+                    InstructionalText = 'Every cost center configuration marked Use for Imposition is a press. Each needs at least one work style and a maximum printing format in PrintVis. Its gripper is at the bottom unless you choose Both (top and bottom). Every other press setting is in the Imposition section of the Cost Center Card.';
                 }
                 field(PressesStatus; PressesStatusTxt)
                 {
