@@ -13,6 +13,7 @@ namespace PrintersEquity.ExternalImposition.Tests;
 
 using PrintersEquity.ExternalImposition.Enums;
 using PrintersEquity.ExternalImposition.Setup;
+using System.Environment;
 using System.TestLibraries.Utilities;
 
 codeunit 50624 "PEQI Setup Guide Tests"
@@ -115,6 +116,19 @@ codeunit 50624 "PEQI Setup Guide Tests"
 
         // [THEN] opening it ran the checks and reset the completion
         Assert.IsFalse(GuideMgt.IsComplete(), 'Opening the guide resets a completion that no longer holds');
+    end;
+
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure TheGuideCarriesTheBanner()
+    var
+        MediaResources: Record "Media Resources";
+    begin
+        // [WHEN] the banner is asked for, the first time or any later one
+        // [THEN] it is found, stored from the image the extension ships, with an image in it
+        Assert.IsTrue(GuideMgt.GetBanner(MediaResources), 'The banner is stored and found');
+        Assert.IsTrue(MediaResources."Media Reference".HasValue(), 'The banner holds an image');
+        Assert.IsTrue(GuideMgt.GetBanner(MediaResources), 'Asking again finds the stored banner');
     end;
 
     [MessageHandler]

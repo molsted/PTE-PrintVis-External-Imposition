@@ -11,8 +11,10 @@
 
 namespace PrintersEquity.ExternalImposition.Setup;
 
+using System.Environment;
 using System.Environment.Configuration;
 using System.Media;
+using System.Utilities;
 
 /// <summary>Puts the imposition guide on Business Central's Assisted Setup page, and keeps its
 /// completed mark true to the setup.</summary>
@@ -28,6 +30,9 @@ codeunit 50567 "PEQI Setup Guide Mgt."
         TitleTxt: Label 'Set up imposition';
         ShortTitleTxt: Label 'Imposition';
         DescriptionTxt: Label 'Connect to the Impositioning engine and check the PrintVis setup imposition reads -- component types, finishing types, presses and units -- fixing what needs attention in place.';
+        // Versioned: a new image is stored under a new code rather than written over the old one.
+        BannerTok: Label 'PEQI-SETUP-GUIDE-BANNER-1.PNG', Locked = true;
+        BannerResourceTok: Label 'PEQIGuideBanner.png', Locked = true;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Guided Experience", 'OnRegisterAssistedSetup', '', false, false)]
     local procedure OnRegisterAssistedSetup()
@@ -59,6 +64,35 @@ codeunit 50567 "PEQI Setup Guide Mgt."
         end;
         GuidedExperience.CompleteAssistedSetup(ObjectType::Page, Page::"PEQI Setup Guide");
         exit(true);
+    end;
+
+    /// <summary>The Printer's Equity banner shown at the top of the guide. False when it cannot
+    /// be shown, which leaves the guide without it rather than failing.</summary>
+    /// <remarks>
+    /// The image ships inside the extension and is stored once in Media Resources, where Business
+    /// Central's own guides keep their banners. Stored on first use rather than at install, so a
+    /// publish that does not run install code still gets it; a user who may not write Media
+    /// Resources before that first use simply sees no banner.
+    /// </remarks>
+    procedure GetBanner(var MediaResources: Record "Media Resources"): Boolean
+    begin
+        if not MediaResources.Get(BannerTok) then begin
+            if not MediaResources.WritePermission() then
+                exit(false);
+            StoreBanner();
+            if not MediaResources.Get(BannerTok) then
+                exit(false);
+        end;
+        exit(MediaResources."Media Reference".HasValue());
+    end;
+
+    local procedure StoreBanner()
+    var
+        MediaResourcesMgt: Codeunit "Media Resources Mgt.";
+        Banner: InStream;
+    begin
+        NavApp.GetResource(BannerResourceTok, Banner);
+        MediaResourcesMgt.InsertMediaFromInstream(BannerTok, Banner);
     end;
 
     procedure IsComplete(): Boolean

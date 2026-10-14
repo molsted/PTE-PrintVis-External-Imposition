@@ -40,6 +40,9 @@
       "to": 50600
     }
   ],
+  "resourceFolders": [
+    "res"
+  ],
   "features": [
     "NoImplicitWith"
   ],
