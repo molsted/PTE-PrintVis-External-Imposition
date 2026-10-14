@@ -232,6 +232,50 @@ codeunit 50618 "PEQI Press Tests"
         Assert.IsFalse(ProblemsMention(Problems, 'PRESS-LIVE'), 'An unmarked copy does not block the press it was copied from');
     end;
 
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure ThePullSideIsTheSideLay()
+    var
+        Config: Record "PVS Cost Center Configuration";
+        Presses: JsonArray;
+        Press: JsonObject;
+    begin
+        // [GIVEN] a press whose PrintVis configuration lays the sheet to the left
+        TestData.AddPressConfig('PRESS-PULL', 'STD');
+        Config.Get('PRESS-PULL', 'STD');
+        Config."Pull Side" := Config."Pull Side"::Left;
+        Config.Modify(false);
+
+        // [WHEN] the presses half is built
+        Presses := CatalogMapper.BuildPresses();
+        Assert.IsTrue(PressNamed(Presses, 'PRESS-PULL', Press), 'The press is built');
+
+        // [THEN] PrintVis's Pull Side is the side lay
+        Assert.AreEqual('Left', JsonHelper.ReadText(Press, 'sideLayEdge'), 'Pull Side Left is a left side lay');
+    end;
+
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure APullSideOfBothSendsNoSideLay()
+    var
+        Config: Record "PVS Cost Center Configuration";
+        Presses: JsonArray;
+        Press: JsonObject;
+    begin
+        // [GIVEN] a press that lays to either side
+        TestData.AddPressConfig('PRESS-BOTH', 'STD');
+        Config.Get('PRESS-BOTH', 'STD');
+        Config."Pull Side" := Config."Pull Side"::Both;
+        Config.Modify(false);
+
+        // [WHEN] the presses half is built
+        Presses := CatalogMapper.BuildPresses();
+        Assert.IsTrue(PressNamed(Presses, 'PRESS-BOTH', Press), 'The press is built');
+
+        // [THEN] no edge is claimed: Both is not one edge
+        Assert.IsFalse(Press.Contains('sideLayEdge'), 'Both sends no side lay edge');
+    end;
+
     /// <summary>The press built for a cost center. PressName falls back to the cost-center code
     /// when the configuration has no Name, which is the case for every test configuration.</summary>
     local procedure PressNamed(Presses: JsonArray; CostCenterCode: Text; var Press: JsonObject): Boolean

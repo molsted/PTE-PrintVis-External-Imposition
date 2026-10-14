@@ -51,7 +51,6 @@ tableextension 50570 "PEQI Cost Center Config." extends "PVS Cost Center Configu
         field(50502; "PEQI Press Type Override"; Enum "PEQI Press Type") { Caption = 'Press Type Override'; DataClassification = CustomerContent; }
         field(50503; "PEQI Use Press Type Override"; Boolean) { Caption = 'Use Press Type Override'; DataClassification = CustomerContent; }
         field(50504; "PEQI Gripper Edge Side"; Enum "PEQI Press Edge") { Caption = 'Gripper Edge Side'; DataClassification = CustomerContent; }
-        field(50505; "PEQI Side Lay Edge"; Enum "PEQI Press Edge") { Caption = 'Side Lay Edge'; DataClassification = CustomerContent; }
         field(50506; "PEQI Non-Printable Top"; Decimal) { Caption = 'Non-Printable Top'; DecimalPlaces = 0 : 5; DataClassification = CustomerContent; }
         field(50507; "PEQI Non-Printable Bottom"; Decimal) { Caption = 'Non-Printable Bottom'; DecimalPlaces = 0 : 5; DataClassification = CustomerContent; }
         field(50508; "PEQI Non-Printable Left"; Decimal) { Caption = 'Non-Printable Left'; DecimalPlaces = 0 : 5; DataClassification = CustomerContent; }

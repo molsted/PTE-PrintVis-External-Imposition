@@ -118,8 +118,8 @@ codeunit 50537 "PEQI Catalog Mapper"
     /// PRESS_MARGIN_EDGE_UNREADABLE.
     /// </para>
     /// <para>
-    /// The configuration's own "Side Lay Edge" stays as an override, for a press whose configuration is wrong or
-    /// silent. It is checked first for that reason, and is blank by default.
+    /// PrintVis's field alone, with no override of ours: a press whose Pull Side is wrong is fixed
+    /// in PrintVis, where it is also wrong for everything else that reads it.
     /// </para>
     /// <para>
     /// <b>Both is not an edge.</b> A press that lays to either side has no single one, and
@@ -130,9 +130,6 @@ codeunit 50537 "PEQI Catalog Mapper"
     /// </remarks>
     local procedure SideLayEdge(Config: Record "PVS Cost Center Configuration"): Text
     begin
-        if Config."PEQI Side Lay Edge" <> Config."PEQI Side Lay Edge"::" " then
-            exit(EnumNames.PressEdge(Config."PEQI Side Lay Edge"));
-
         case Config."Pull Side" of
             Config."Pull Side"::Left:
                 exit('Left');

@@ -29,8 +29,7 @@ enum 50551 "PEQI Press Type"
 enum 50553 "PEQI Press Edge"
 {
     Extensible = false;
-    // Blank, not 'Unknown': an unset edge has to look unset, and for the side lay it means
-    // "use what PrintVis records".
+    // Blank, not 'Unknown': an unset edge has to look unset.
     value(0; " ") { Caption = ' '; }
     value(1; Top) { Caption = 'Top'; }
     value(2; Bottom) { Caption = 'Bottom'; }
