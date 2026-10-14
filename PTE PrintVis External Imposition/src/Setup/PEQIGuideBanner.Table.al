@@ -14,8 +14,9 @@ namespace PrintersEquity.ExternalImposition.Setup;
 /// <summary>The setup guide's banner image, held in memory while the guide is open.</summary>
 /// <remarks>
 /// Temporary on purpose: the image is read from the extension each time the guide opens, so
-/// nothing is stored, nothing needs permission to store it, and a new image in a new build is
-/// simply the image shown.
+/// no row of ours is stored and a new image in a new build is simply the image shown. Media,
+/// not Blob, because a Media field is what a NavigatePage banner is drawn from -- Microsoft's own
+/// guides bind theirs to "Media Resources"."Media Reference".
 /// </remarks>
 table 50510 "PEQI Guide Banner"
 {
@@ -26,7 +27,7 @@ table 50510 "PEQI Guide Banner"
     fields
     {
         field(1; "Primary Key"; Code[10]) { Caption = 'Primary Key'; }
-        field(2; Picture; Blob) { Caption = 'Picture'; SubType = Bitmap; }
+        field(2; Picture; Media) { Caption = 'Picture'; }
     }
 
     keys

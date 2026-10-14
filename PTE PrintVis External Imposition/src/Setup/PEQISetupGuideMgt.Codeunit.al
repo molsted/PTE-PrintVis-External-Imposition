@@ -29,6 +29,7 @@ codeunit 50567 "PEQI Setup Guide Mgt."
         ShortTitleTxt: Label 'Imposition';
         DescriptionTxt: Label 'Connect to the Impositioning engine and check the PrintVis setup imposition reads -- component types, finishing types, presses and units -- fixing what needs attention in place.';
         BannerResourceTok: Label 'PEQIGuideBanner.png', Locked = true;
+        BannerCaptionTxt: Label 'Printer''s Equity', Locked = true;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Guided Experience", 'OnRegisterAssistedSetup', '', false, false)]
     local procedure OnRegisterAssistedSetup()
@@ -67,14 +68,12 @@ codeunit 50567 "PEQI Setup Guide Mgt."
     procedure GetBanner(var Banner: Record "PEQI Guide Banner" temporary): Boolean
     var
         Image: InStream;
-        Picture: OutStream;
     begin
         Banner.Reset();
         Banner.DeleteAll();
         Banner.Init();
         NavApp.GetResource(BannerResourceTok, Image);
-        Banner.Picture.CreateOutStream(Picture);
-        CopyStream(Picture, Image);
+        Banner.Picture.ImportStream(Image, BannerCaptionTxt, 'image/png');
         Banner.Insert();
         exit(Banner.Picture.HasValue());
     end;
