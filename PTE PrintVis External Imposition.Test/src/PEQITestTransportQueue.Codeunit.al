@@ -23,6 +23,7 @@ codeunit 50603 "PEQI Test Transport Queue"
         CallMethods: List of [Text];
         CallUrls: List of [Text];
         CallBodies: List of [Text];
+        CallTimeouts: List of [Integer];
 
     procedure Reset()
     begin
@@ -32,6 +33,7 @@ codeunit 50603 "PEQI Test Transport Queue"
         Clear(CallMethods);
         Clear(CallUrls);
         Clear(CallBodies);
+        Clear(CallTimeouts);
     end;
 
     procedure QueueResponse(StatusCode: Integer; ResponseBody: Text)
@@ -67,11 +69,12 @@ codeunit 50603 "PEQI Test Transport Queue"
         exit(Reached);
     end;
 
-    procedure RecordCall(Method: Text; Url: Text; Body: Text)
+    procedure RecordCall(Method: Text; Url: Text; Body: Text; TimeoutMs: Integer)
     begin
         CallMethods.Add(Method);
         CallUrls.Add(Url);
         CallBodies.Add(Body);
+        CallTimeouts.Add(TimeoutMs);
     end;
 
     procedure CallCount(): Integer
@@ -82,5 +85,15 @@ codeunit 50603 "PEQI Test Transport Queue"
     procedure CallUrl(Index: Integer): Text
     begin
         exit(CallUrls.Get(Index));
+    end;
+
+    procedure CallMethod(Index: Integer): Text
+    begin
+        exit(CallMethods.Get(Index));
+    end;
+
+    procedure CallTimeout(Index: Integer): Integer
+    begin
+        exit(CallTimeouts.Get(Index));
     end;
 }

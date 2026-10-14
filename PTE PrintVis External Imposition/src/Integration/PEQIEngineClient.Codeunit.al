@@ -24,6 +24,7 @@ codeunit 50541 "PEQI Engine Client"
         UnreachableErr: Label 'The Impositioning engine could not be reached at %1.', Comment = '%1 url';
         HttpErr: Label 'The Impositioning engine returned %1.\%2', Comment = '%1 status code, %2 detail';
         StaleSolutionErr: Label 'The quoted solution is no longer known to the engine. Solve the job again.';
+        SingleAttempt: Boolean;
 
     procedure SetTransport(NewTransportType: Enum "PEQI Transport Type")
     begin
@@ -45,6 +46,43 @@ codeunit 50541 "PEQI Engine Client"
         exit(Call('GET', 'imposition/jdf/' + LowerCase(DelChr(Format(TicketId), '=', '{}')), ''));
     end;
 
+    /// <summary>Whether the engine answers at the configured URL. False, with the reason in
+    /// Detail, when it does not. Never raises an error.</summary>
+    /// <remarks>
+    /// The setup guide runs this on opening and shows the reason on its connection step, so it
+    /// makes one attempt and waits at most ten seconds whatever the setup's retry count and
+    /// timeout say: a guide that waits two minutes three times over before it opens is worse than
+    /// one that says the engine did not answer. Part types is the cheapest route the engine has
+    /// and touches no storage, but it goes through the same URL, route prefix and key as a solve.
+    /// </remarks>
+    procedure TestConnection(var Detail: Text): Boolean
+    var
+        Setup: Record "PEQI Imposition Setup";
+        Answered: Boolean;
+    begin
+        Clear(Detail);
+        // Outside the try: GetSetup inserts the singleton on first use, and a try function may not write.
+        Setup.GetSetup();
+        SingleAttempt := true;
+        ClearLastError();
+        Answered := TryPing();
+        SingleAttempt := false;
+        if not Answered then
+            Detail := GetLastErrorText();
+        exit(Answered);
+    end;
+
+    [TryFunction]
+    local procedure TryPing()
+    begin
+        Call('GET', 'imposition/part-types', '');
+    end;
+
+    local procedure PingTimeoutMs(): Integer
+    begin
+        exit(10000);
+    end;
+
     procedure LastStatusCode(): Integer
     begin
         exit(LastStatus);
@@ -62,6 +100,7 @@ codeunit 50541 "PEQI Engine Client"
         Url: Text;
         Attempt: Integer;
         MaxAttempts: Integer;
+        TimeoutMs: Integer;
         StatusCode: Integer;
         ResponseBody: Text;
         Reached: Boolean;
@@ -74,9 +113,15 @@ codeunit 50541 "PEQI Engine Client"
         Url := DelChr(Setup."Engine Base Url", '>', '/') + '/' + Route;
         Transport := TransportType;
         MaxAttempts := Setup."Retry Count" + 1;
+        TimeoutMs := Setup."Timeout (ms)";
+        if SingleAttempt then begin
+            MaxAttempts := 1;
+            if TimeoutMs > PingTimeoutMs() then
+                TimeoutMs := PingTimeoutMs();
+        end;
 
         for Attempt := 1 to MaxAttempts do begin
-            Reached := Transport.Send(Method, Url, Setup.GetApiKey(), Setup."Timeout (ms)", Body, StatusCode, ResponseBody);
+            Reached := Transport.Send(Method, Url, Setup.GetApiKey(), TimeoutMs, Body, StatusCode, ResponseBody);
             LastStatus := StatusCode;
 
             if Reached and (StatusCode >= 200) and (StatusCode < 300) then begin

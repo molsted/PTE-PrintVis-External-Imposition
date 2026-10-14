@@ -18,7 +18,7 @@ codeunit 50601 "PEQI Test Transport" implements "PEQI IEngine Transport"
     var
         Queue: Codeunit "PEQI Test Transport Queue";
     begin
-        Queue.RecordCall(Method, Url, Body);
+        Queue.RecordCall(Method, Url, Body, TimeoutMs);
         exit(Queue.NextResponse(StatusCode, ResponseBody));
     end;
 }
