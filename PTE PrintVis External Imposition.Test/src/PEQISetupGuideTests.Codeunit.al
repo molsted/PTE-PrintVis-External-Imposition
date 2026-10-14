@@ -131,6 +131,25 @@ codeunit 50624 "PEQI Setup Guide Tests"
         Assert.IsTrue(GuideMgt.GetBanner(MediaResources), 'Asking again finds the stored banner');
     end;
 
+    [Test]
+    [TransactionModel(TransactionModel::AutoRollback)]
+    procedure ABannerRowWithoutAnImageIsReplaced()
+    var
+        MediaResources: Record "Media Resources";
+        Stored: Record "Media Resources";
+    begin
+        // [GIVEN] the banner's row exists but holds no image, as a failed first store would leave it
+        Assert.IsTrue(GuideMgt.GetBanner(Stored), 'The banner is stored');
+        Stored.Delete();
+        MediaResources.Init();
+        MediaResources.Code := Stored.Code;
+        MediaResources.Insert();
+
+        // [THEN] asking for the banner stores the image again rather than hiding it for good
+        Assert.IsTrue(GuideMgt.GetBanner(MediaResources), 'An empty banner row is replaced');
+        Assert.IsTrue(MediaResources."Media Reference".HasValue(), 'The replacement holds an image');
+    end;
+
     [MessageHandler]
     procedure BlockingRemainsMessageHandler(Message: Text[1024])
     begin

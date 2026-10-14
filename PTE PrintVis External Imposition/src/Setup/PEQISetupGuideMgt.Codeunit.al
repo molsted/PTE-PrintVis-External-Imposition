@@ -76,13 +76,17 @@ codeunit 50567 "PEQI Setup Guide Mgt."
     /// </remarks>
     procedure GetBanner(var MediaResources: Record "Media Resources"): Boolean
     begin
-        if not MediaResources.Get(BannerTok) then begin
-            if not MediaResources.WritePermission() then
-                exit(false);
-            StoreBanner();
-            if not MediaResources.Get(BannerTok) then
-                exit(false);
-        end;
+        if MediaResources.Get(BannerTok) then
+            if MediaResources."Media Reference".HasValue() then
+                exit(true);
+        if not MediaResources.WritePermission() then
+            exit(false);
+        // A row without an image is replaced, not trusted: kept, it would hide the banner for good.
+        if MediaResources.Get(BannerTok) then
+            MediaResources.Delete();
+        StoreBanner();
+        if not MediaResources.Get(BannerTok) then
+            exit(false);
         exit(MediaResources."Media Reference".HasValue());
     end;
 
