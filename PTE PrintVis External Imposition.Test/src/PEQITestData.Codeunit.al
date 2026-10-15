@@ -12,6 +12,7 @@ namespace PrintersEquity.ExternalImposition.Tests;
 
 using Microsoft.CRM.Contact;
 using Microsoft.Inventory.Item;
+using Microsoft.Sales.Customer;
 using PrintersEquity.ExternalImposition.Enums;
 using PrintersEquity.ExternalImposition.Setup;
 
@@ -98,6 +99,36 @@ codeunit 50602 "PEQI Test Data"
         PVSCase."Job Name" := JobName;
         PVSCase."Sell-To Contact No." := ContactNo;
         PVSCase."Sell-To Contact No. Approver" := ApproverNo;
+        PVSCase.Modify(false);
+    end;
+
+    /// <summary>A customer card with a name, an address and the ways to reach it. Without the
+    /// Sales triggers.</summary>
+    procedure AddCustomer(CustomerNo: Code[20]; CustomerName: Text[100]; City: Text[30]; Email: Text[80]; Phone: Text[30])
+    var
+        SellTo: Record Customer;
+    begin
+        SellTo.Init();
+        SellTo."No." := CustomerNo;
+        SellTo.Name := CustomerName;
+        SellTo.Address := 'Card Street 9';
+        SellTo.City := City;
+        SellTo."Post Code" := '2000';
+        SellTo."E-Mail" := Email;
+        SellTo."Phone No." := Phone;
+        SellTo.Insert(false);
+    end;
+
+    /// <summary>Points a test case at a customer and a contact the way a PrintVis order can: the
+    /// numbers set, the copied names and address left blank.</summary>
+    procedure SetCaseCustomerNumbersOnly(CaseId: Integer; CustomerNo: Code[20]; ContactNo: Code[20]; ContactName: Text[100])
+    var
+        PVSCase: Record "PVS Case";
+    begin
+        PVSCase.Get(CaseId);
+        PVSCase."Sell-To No." := CustomerNo;
+        PVSCase."Sell-To Contact No." := ContactNo;
+        PVSCase."Sell-To Contact" := ContactName;
         PVSCase.Modify(false);
     end;
 

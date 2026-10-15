@@ -290,6 +290,32 @@ codeunit 50613 "PEQI Commit Tests"
     end;
 
     [Test]
+    procedure ACaseWithOnlyTheNumbersFallsBackToTheCustomerCard()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Body: Text;
+    begin
+        // [GIVEN] a case with Sell-To No. and a contact number but no name or address copied onto it,
+        // and a contact number with no card behind it
+        GivenAnEngine('%4');
+        TestData.AddCase(9022, 'O-9022', '');
+        TestData.AddCustomer('C-9022', 'Verdant City', 'Aarhus', 'orders@verdant.example', '+4522222222');
+        TestData.SetCaseCustomerNumbersOnly(9022, 'C-9022', 'CT-NONE', 'Anita Langers');
+        ImpositionJob := SolvedEntry(9022);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] the company, address and channels come from the customer card
+        Assert.IsTrue(StrPos(Body, '"company":"VerdantCity"') > 0, 'The card''s name stands in for a blank Sell-To Name');
+        Assert.IsTrue(StrPos(Body, '"city":"Aarhus"') > 0, 'The card''s address stands in for a blank one');
+        Assert.IsTrue(StrPos(Body, '"locator":"orders@verdant.example"') > 0, 'The card''s email is sent');
+        Assert.IsTrue(StrPos(Body, '"locator":"+4522222222"') > 0, 'The card''s phone is sent');
+        // [THEN] the person is the name the case shows, since no card can be found for it
+        Assert.IsTrue(StrPos(Body, '"person":{"familyName":"AnitaLangers"}') > 0, 'The case''s contact name is the person');
+    end;
+
+    [Test]
     procedure ACaseWithoutACustomerSendsNone()
     var
         ImpositionJob: Record "PEQI Imposition Job";
