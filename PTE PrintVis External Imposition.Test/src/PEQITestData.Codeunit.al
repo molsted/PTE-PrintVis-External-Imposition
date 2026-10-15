@@ -10,6 +10,7 @@
 
 namespace PrintersEquity.ExternalImposition.Tests;
 
+using Microsoft.CRM.Contact;
 using Microsoft.Inventory.Item;
 using PrintersEquity.ExternalImposition.Enums;
 using PrintersEquity.ExternalImposition.Setup;
@@ -68,6 +69,42 @@ codeunit 50602 "PEQI Test Data"
         PVSCase."Order No." := OrderNo;
         PVSCase."Copy From Order No." := CopyFromOrderNo;
         PVSCase.Insert(false);
+    end;
+
+    /// <summary>Gives a test case a sell-to customer, as the commit's customer mapper reads it.</summary>
+    procedure SetCaseCustomer(CaseId: Integer; CustomerNo: Code[20]; CustomerName: Text[100]; YourReference: Text[35]; JobName: Text[250]; ContactNo: Code[20]; ApproverNo: Code[20])
+    var
+        PVSCase: Record "PVS Case";
+    begin
+        PVSCase.Get(CaseId);
+        PVSCase."Sell-To No." := CustomerNo;
+        PVSCase."Sell-To Name" := CustomerName;
+        PVSCase."Sell-To Address" := 'Main Street 1';
+        PVSCase."Sell-To Postal Code" := '1000';
+        PVSCase."Sell-To City" := 'Copenhagen';
+        PVSCase."Sell-to Country/Region Code" := 'DK';
+        PVSCase."Sell-To Phone" := '+4500000000';
+        PVSCase."Your Reference" := YourReference;
+        PVSCase."Job Name" := JobName;
+        PVSCase."Sell-To Contact No." := ContactNo;
+        PVSCase."Sell-To Contact No. Approver" := ApproverNo;
+        PVSCase.Modify(false);
+    end;
+
+    /// <summary>A person contact card. Without the CRM triggers, which would number it and
+    /// rebuild its name.</summary>
+    procedure AddContact(ContactNo: Code[20]; FirstName: Text[30]; Surname: Text[30]; Email: Text[80]; Phone: Text[30])
+    var
+        PersonContact: Record Contact;
+    begin
+        PersonContact.Init();
+        PersonContact."No." := ContactNo;
+        PersonContact."First Name" := FirstName;
+        PersonContact.Surname := Surname;
+        PersonContact.Name := CopyStr(FirstName + ' ' + Surname, 1, MaxStrLen(PersonContact.Name));
+        PersonContact."E-Mail" := Email;
+        PersonContact."Phone No." := Phone;
+        PersonContact.Insert(false);
     end;
 
     /// <summary>Inserts the PVS Job that BuildObject reads for binding and quantity.</summary>

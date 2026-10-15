@@ -22,6 +22,7 @@ codeunit 50543 "PEQI Commit Manager"
         Reader: Codeunit "PEQI Response Reader";
         JsonHelper: Codeunit "PEQI Json Helper";
         EnumNames: Codeunit "PEQI Enum Names";
+        CustomerMapper: Codeunit "PEQI Customer Mapper";
         TransportType: Enum "PEQI Transport Type";
         NotSolvedErr: Label 'This imposition has no chosen solution yet.';
         NoRequestErr: Label 'This imposition has no stored request.';
@@ -89,6 +90,7 @@ codeunit 50543 "PEQI Commit Manager"
         Setup: Record "PEQI Imposition Setup";
         RequestObject: JsonObject;
         PVSCase: Record "PVS Case";
+        Customer: JsonObject;
         Envelope: JsonObject;
         SolutionObject: JsonObject;
         Diagnostics: JsonArray;
@@ -115,6 +117,13 @@ codeunit 50543 "PEQI Commit Manager"
         JobIdText := JobId(ImpositionJob, Setup, PVSCase);
         JsonHelper.AddText(RequestObject, 'jobId', JobIdText);
         JsonHelper.AddText(RequestObject, 'relatedJobId', RelatedJobId(ImpositionJob, Setup, PVSCase));
+        // Replaced rather than added to: the stored request is the editor's, and a key it already
+        // carries would make JsonObject.Add fail.
+        if CustomerMapper.Build(PVSCase, Customer) then begin
+            if RequestObject.Contains('customer') then
+                RequestObject.Remove('customer');
+            RequestObject.Add('customer', Customer);
+        end;
         JsonHelper.AddText(RequestObject, 'solutionId', ImpositionJob."Solution Id");
         // A name, not an ordinal: Format(x, 0, 9) once put enum positions on the wire. No flavour is
         // sent -- the engine writes the stripping ticket by default, and the Preps template is not

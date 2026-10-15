@@ -257,6 +257,56 @@ codeunit 50613 "PEQI Commit Tests"
         Setup.Validate("Job Id Format", '');
     end;
 
+    [Test]
+    procedure TheCaseCustomerIsSentWithItsContactAndApprover()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Body: Text;
+    begin
+        // [GIVEN] a case for a customer, with a sell-to contact and an approver
+        GivenAnEngine('%4');
+        TestData.AddCase(9020, 'O-9020', '');
+        TestData.AddContact('CT-9020', 'Ada', 'Lovelace', 'ada@example.com', '');
+        TestData.AddContact('AP-9020', 'Grace', 'Hopper', 'grace@example.com', '+4511111111');
+        TestData.SetCaseCustomer(9020, 'C-1001', 'Acme', 'PO4711', 'Spring catalogue', 'CT-9020', 'AP-9020');
+        ImpositionJob := SolvedEntry(9020);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] the customer is identified, with the case's names and references
+        Assert.IsTrue(StrPos(Body, '"customerId":"C-1001"') > 0, 'The sell-to customer is the customer id');
+        Assert.IsTrue(StrPos(Body, '"customerOrderId":"PO4711"') > 0, 'Your Reference is the customer''s order id');
+        Assert.IsTrue(StrPos(Body, '"customerJobName":"Springcatalogue"') > 0, 'The job name is the customer''s job name');
+        // [THEN] the Customer contact carries the company, the person, the address and the person's own email
+        Assert.IsTrue(StrPos(Body, '"contactTypes":["Customer"],"company":"Acme"') > 0, 'The Customer contact names the company');
+        Assert.IsTrue(StrPos(Body, '"firstName":"Ada","familyName":"Lovelace"') > 0, 'The sell-to contact is the person');
+        Assert.IsTrue(StrPos(Body, '"countryCode":"DK"') > 0, 'The address is the sell-to address');
+        Assert.IsTrue(StrPos(Body, '"locator":"ada@example.com"') > 0, 'The contact''s own email wins');
+        Assert.IsTrue(StrPos(Body, '"locator":"+4500000000"') > 0, 'The case''s phone stands in for a contact with none');
+        // [THEN] the approver is a contact of its own
+        Assert.IsTrue(StrPos(Body, '"contactTypes":["Approver"]') > 0, 'The approver is sent as an Approver contact');
+        Assert.IsTrue(StrPos(Body, '"locator":"grace@example.com"') > 0, 'The approver''s email is sent');
+    end;
+
+    [Test]
+    procedure ACaseWithoutACustomerSendsNone()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Body: Text;
+    begin
+        // [GIVEN] a case with no sell-to customer
+        GivenAnEngine('%4');
+        TestData.AddCase(9021, 'O-9021', '');
+        ImpositionJob := SolvedEntry(9021);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] no customer is sent
+        Assert.AreEqual(0, StrPos(Body, '"customer"'), 'A case without a customer sends none');
+    end;
+
     local procedure GivenAnEngine(JobIdFormat: Text[50])
     var
         Setup: Record "PEQI Imposition Setup";
