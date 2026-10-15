@@ -307,6 +307,43 @@ codeunit 50613 "PEQI Commit Tests"
         Assert.AreEqual(0, StrPos(Body, '"customer"'), 'A case without a customer sends none');
     end;
 
+    [Test]
+    procedure TheProjectACaseBelongsToIsItsProjectId()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Body: Text;
+    begin
+        // [GIVEN] a case that belongs to project case 12345
+        GivenAnEngine('%4');
+        TestData.AddCase(9030, 'O-9030', '');
+        TestData.SetCaseProject(9030, 12345);
+        ImpositionJob := SolvedEntry(9030);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] the project is the project id, written without a thousands separator
+        Assert.IsTrue(StrPos(Body, '"projectId":"12345"') > 0, 'Belongs To Project ID is the project id');
+    end;
+
+    [Test]
+    procedure ACaseInNoProjectSendsNoProjectId()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Body: Text;
+    begin
+        // [GIVEN] a case that belongs to no project
+        GivenAnEngine('%4');
+        TestData.AddCase(9031, 'O-9031', '');
+        ImpositionJob := SolvedEntry(9031);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] no project id is sent
+        Assert.AreEqual(0, StrPos(Body, 'projectId'), 'A case in no project sends no project id');
+    end;
+
     local procedure GivenAnEngine(JobIdFormat: Text[50])
     var
         Setup: Record "PEQI Imposition Setup";

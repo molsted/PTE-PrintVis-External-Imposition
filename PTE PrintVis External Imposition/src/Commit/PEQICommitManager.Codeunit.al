@@ -117,6 +117,9 @@ codeunit 50543 "PEQI Commit Manager"
         JobIdText := JobId(ImpositionJob, Setup, PVSCase);
         JsonHelper.AddText(RequestObject, 'jobId', JobIdText);
         JsonHelper.AddText(RequestObject, 'relatedJobId', RelatedJobId(ImpositionJob, Setup, PVSCase));
+        // The project case this case belongs to. Zero is "none", and sends nothing.
+        if PVSCase."Belongs To Project ID" <> 0 then
+            JsonHelper.AddText(RequestObject, 'projectId', Format(PVSCase."Belongs To Project ID", 0, 9));
         // Replaced rather than added to: the stored request is the editor's, and a key it already
         // carries would make JsonObject.Add fail.
         if CustomerMapper.Build(PVSCase, Customer) then begin

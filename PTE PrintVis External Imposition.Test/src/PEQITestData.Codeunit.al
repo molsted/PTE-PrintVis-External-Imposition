@@ -71,6 +71,16 @@ codeunit 50602 "PEQI Test Data"
         PVSCase.Insert(false);
     end;
 
+    /// <summary>Puts a test case in a project, as PrintVis's Belongs To Project ID does.</summary>
+    procedure SetCaseProject(CaseId: Integer; ProjectCaseId: Integer)
+    var
+        PVSCase: Record "PVS Case";
+    begin
+        PVSCase.Get(CaseId);
+        PVSCase."Belongs To Project ID" := ProjectCaseId;
+        PVSCase.Modify(false);
+    end;
+
     /// <summary>Gives a test case a sell-to customer, as the commit's customer mapper reads it.</summary>
     procedure SetCaseCustomer(CaseId: Integer; CustomerNo: Code[20]; CustomerName: Text[100]; YourReference: Text[35]; JobName: Text[250]; ContactNo: Code[20]; ApproverNo: Code[20])
     var
