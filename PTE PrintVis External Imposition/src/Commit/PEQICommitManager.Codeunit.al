@@ -26,6 +26,7 @@ codeunit 50543 "PEQI Commit Manager"
         NotSolvedErr: Label 'This imposition has no chosen solution yet.';
         NoRequestErr: Label 'This imposition has no stored request.';
         BadResultErr: Label 'The imposition editor sent a result this version does not understand.';
+        NoOrderNoErr: Label 'Case %1 has no order number yet, and the Job ID Format in Imposition Setup is built from it. Make the case an order, or change the Job ID Format.', Comment = '%1 the case ID';
         WrongEntryErr: Label 'This result belongs to a different imposition entry (%1), so it was not stored. Re-open the editor on this entry and approve again.', Comment = '%1 the entry key the editor sent';
 
     procedure SetTransport(NewTransportType: Enum "PEQI Transport Type")
@@ -87,6 +88,7 @@ codeunit 50543 "PEQI Commit Manager"
         JdfTicket: Record "PEQI Jdf Ticket";
         Setup: Record "PEQI Imposition Setup";
         RequestObject: JsonObject;
+        PVSCase: Record "PVS Case";
         Envelope: JsonObject;
         SolutionObject: JsonObject;
         Diagnostics: JsonArray;
@@ -94,6 +96,7 @@ codeunit 50543 "PEQI Commit Manager"
         ResponseText: Text;
         SolutionText: Text;
         DiagnosticsText: Text;
+        JobIdText: Text;
     begin
         if ImpositionJob."Solution Id" = '' then
             Error(NotSolvedErr);
@@ -107,7 +110,11 @@ codeunit 50543 "PEQI Commit Manager"
         Setup := Setup.GetSetup();
         Setup.Get('');
 
-        JsonHelper.AddText(RequestObject, 'jobId', JobId(ImpositionJob, Setup));
+        if not PVSCase.Get(ImpositionJob."Case ID") then
+            Clear(PVSCase);
+        JobIdText := JobId(ImpositionJob, Setup, PVSCase);
+        JsonHelper.AddText(RequestObject, 'jobId', JobIdText);
+        JsonHelper.AddText(RequestObject, 'relatedJobId', RelatedJobId(ImpositionJob, Setup, PVSCase));
         JsonHelper.AddText(RequestObject, 'solutionId', ImpositionJob."Solution Id");
         // A name, not an ordinal: Format(x, 0, 9) once put enum positions on the wire. No flavour is
         // sent -- the engine writes the stripping ticket by default, and the Preps template is not
@@ -128,7 +135,7 @@ codeunit 50543 "PEQI Commit Manager"
         JdfTicket.Job := ImpositionJob.Job;
         JdfTicket.Version := ImpositionJob.Version;
         JdfTicket."Entry No." := ImpositionJob."Entry No.";
-        JdfTicket."Job Id" := CopyStr(JobId(ImpositionJob, Setup), 1, MaxStrLen(JdfTicket."Job Id"));
+        JdfTicket."Job Id" := CopyStr(JobIdText, 1, MaxStrLen(JdfTicket."Job Id"));
         JdfTicket."Solution Id" := CopyStr(JsonHelper.ReadText(Envelope, 'solutionId'), 1, MaxStrLen(JdfTicket."Solution Id"));
         JdfTicket."Jdf Version" := Setup."Jdf Version";
         JdfTicket."File Name" := CopyStr(JsonHelper.ReadText(Envelope, 'fileName'), 1, MaxStrLen(JdfTicket."File Name"));
@@ -162,10 +169,46 @@ codeunit 50543 "PEQI Commit Manager"
         exit(JsonHelper.ReadText(Snapshot, 'snapshotId'));
     end;
 
-    local procedure JobId(ImpositionJob: Record "PEQI Imposition Job"; Setup: Record "PEQI Imposition Setup"): Text
+    local procedure JobId(ImpositionJob: Record "PEQI Imposition Job"; Setup: Record "PEQI Imposition Setup"; PVSCase: Record "PVS Case"): Text
+    var
+        JobIdFormat: Text;
     begin
-        if Setup."Job Id Format" = '' then
-            exit(StrSubstNo('%1-%2-%3', ImpositionJob."Case ID", ImpositionJob.Job, ImpositionJob.Version));
-        exit(StrSubstNo(Setup."Job Id Format", ImpositionJob."Case ID", ImpositionJob.Job, ImpositionJob.Version));
+        JobIdFormat := Setup.EffectiveJobIdFormat();
+        if Setup.UsesPlaceholder(JobIdFormat, 4) and (PVSCase."Order No." = '') then
+            Error(NoOrderNoErr, ImpositionJob."Case ID");
+        exit(Setup.FormatJobId(JobIdFormat, ImpositionJob."Case ID", ImpositionJob.Job, ImpositionJob.Version, PVSCase."Order No."));
+    end;
+
+    /// <summary>The job ID the case this one was copied from has, written with the same format, so
+    /// a receiver can find it among the tickets it holds. Blank when the case was not copied, or
+    /// when the format needs the earlier case and it cannot be found: the field is optional, and a
+    /// missing relation is not worth refusing the ticket for.</summary>
+    local procedure RelatedJobId(ImpositionJob: Record "PEQI Imposition Job"; Setup: Record "PEQI Imposition Setup"; PVSCase: Record "PVS Case"): Text
+    var
+        RelatedCase: Record "PVS Case";
+        RelatedJob: Record "PVS Job";
+        JobIdFormat: Text;
+        RelatedVersion: Integer;
+    begin
+        if PVSCase."Copy From Order No." = '' then
+            exit('');
+        JobIdFormat := Setup.EffectiveJobIdFormat();
+        if not Setup.UsesPlaceholder(JobIdFormat, 1) then
+            exit(Setup.FormatJobId(JobIdFormat, 0, 0, 0, PVSCase."Copy From Order No."));
+
+        RelatedCase.SetRange("Order No.", PVSCase."Copy From Order No.");
+        if not RelatedCase.FindFirst() then
+            exit('');
+
+        // The same job in the earlier case, at the version that case went to order with.
+        if Setup.UsesPlaceholder(JobIdFormat, 3) then begin
+            RelatedJob.SetRange(ID, RelatedCase.ID);
+            RelatedJob.SetRange(Job, ImpositionJob.Job);
+            RelatedJob.SetRange(Active, true);
+            if not RelatedJob.FindFirst() then
+                exit('');
+            RelatedVersion := RelatedJob.Version;
+        end;
+        exit(Setup.FormatJobId(JobIdFormat, RelatedCase.ID, ImpositionJob.Job, RelatedVersion, PVSCase."Copy From Order No."));
     end;
 }

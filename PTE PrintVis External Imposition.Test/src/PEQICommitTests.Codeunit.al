@@ -24,6 +24,7 @@ codeunit 50613 "PEQI Commit Tests"
     var
         Assert: Codeunit "Library Assert";
         Queue: Codeunit "PEQI Test Transport Queue";
+        TestData: Codeunit "PEQI Test Data";
 
     [Test]
     procedure StoringAChoiceMovesTheJobToSolved()
@@ -84,6 +85,7 @@ codeunit 50613 "PEQI Commit Tests"
         Setup."Engine Base Url" := 'https://engine.example.com/api';
         Setup.Modify(true);
 
+        TestData.AddCase(9003, 'O-9003', '');
         ImpositionJob := ImpositionJob.NewEntry(9003, 1, 1);
         ImpositionJob.SetRequestJson('{"parts":[]}');
         ImpositionJob."Solution Id" := 'sol-3';
@@ -136,5 +138,156 @@ codeunit 50613 "PEQI Commit Tests"
         JdfTicket.SetRange("Entry No.", First."Entry No.");
         Assert.AreEqual(1, JdfTicket.Count(), 'A re-solve leaves the earlier ticket intact');
         Assert.AreNotEqual(First."Entry No.", Second."Entry No.", 'The re-solve is a new entry');
+    end;
+    [Test]
+    procedure TheJobIdIsTheOrderNumberByDefault()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Body: Text;
+    begin
+        // [GIVEN] the default format, and a case that was not copied
+        GivenAnEngine('');
+        TestData.AddCase(9010, 'O-9010', '');
+        ImpositionJob := SolvedEntry(9010);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] the job ID is the order number, and there is no related job
+        Assert.IsTrue(StrPos(Body, '"jobId":"O-9010"') > 0, 'Blank reads as %4, the order number');
+        Assert.AreEqual(0, StrPos(Body, 'relatedJobId'), 'A case that was not copied relates to no job');
+    end;
+
+    [Test]
+    procedure ACopiedCaseNamesTheOrderItWasCopiedFrom()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Body: Text;
+    begin
+        // [GIVEN] %4, and a case copied from another order
+        GivenAnEngine('%4');
+        TestData.AddCase(9011, 'O-9011', 'O-9001');
+        ImpositionJob := SolvedEntry(9011);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] the related job ID is written the way the job ID is
+        Assert.IsTrue(StrPos(Body, '"relatedJobId":"O-9001"') > 0, 'The earlier order number is the related job ID');
+    end;
+
+    [Test]
+    procedure WithACaseFormatTheRelatedIdIsTheEarlierCases()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Body: Text;
+    begin
+        // [GIVEN] a format built from the case, and an earlier case whose job went to order at version 2
+        GivenAnEngine('%1-%2-%3');
+        TestData.AddCase(9012, 'O-9012', '');
+        TestData.AddJob(9012, 1, 2, '', 1000);
+        TestData.AddCase(9013, 'O-9013', 'O-9012');
+        ImpositionJob := SolvedEntry(9013);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] both IDs come from the same format, each from its own case
+        Assert.IsTrue(StrPos(Body, '"jobId":"9013-1-1"') > 0, 'The job ID is this case''s');
+        Assert.IsTrue(StrPos(Body, '"relatedJobId":"9012-1-2"') > 0, 'The related job ID is the earlier case''s, at its active version');
+    end;
+
+    [Test]
+    procedure AnEarlierCaseThatCannotBeFoundRelatesToNothing()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Body: Text;
+    begin
+        // [GIVEN] a format built from the case, and a case copied from an order no case carries
+        GivenAnEngine('%1-%2-%3');
+        TestData.AddCase(9014, 'O-9014', 'O-GONE');
+        ImpositionJob := SolvedEntry(9014);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] the ticket is still written, without the optional relation
+        Assert.AreEqual(0, StrPos(Body, 'relatedJobId'), 'No related job ID can be built, so none is sent');
+    end;
+
+    [Test]
+    procedure ACaseWithoutAnOrderNumberIsRefusedWhenTheFormatNeedsOne()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        CommitManager: Codeunit "PEQI Commit Manager";
+    begin
+        // [GIVEN] %4, and a case that is still a quote
+        GivenAnEngine('%4');
+        TestData.AddCase(9015, '', '');
+        ImpositionJob := SolvedEntry(9015);
+        CommitManager.SetTransport("PEQI Transport Type"::Test);
+
+        // [WHEN] the ticket is generated
+        asserterror CommitManager.GenerateJdf(ImpositionJob);
+
+        // [THEN] it is refused, saying why, and nothing is sent
+        Assert.ExpectedError('has no order number yet');
+        Assert.AreEqual(0, Queue.CallCount(), 'A ticket with no job ID is not requested');
+    end;
+
+    [Test]
+    procedure AFormatMustNameOneJob()
+    var
+        Setup: Record "PEQI Imposition Setup";
+    begin
+        // [THEN] %2 and %3 need %1, and a format needs %1 or %4 at all
+        asserterror Setup.Validate("Job Id Format", '%2-%3');
+        Assert.ExpectedError('without %1');
+        asserterror Setup.Validate("Job Id Format", 'JOB');
+        Assert.ExpectedError('the same ID');
+        asserterror Setup.Validate("Job Id Format", '%4-%5');
+        Assert.ExpectedError('placeholder other than');
+        asserterror Setup.Validate("Job Id Format", '%4%');
+        Assert.ExpectedError('placeholder other than');
+
+        // [THEN] these are accepted
+        Setup.Validate("Job Id Format", '%1-%2-%3');
+        Setup.Validate("Job Id Format", 'PV-%4');
+        Setup.Validate("Job Id Format", '%4-%1');
+        Setup.Validate("Job Id Format", '');
+    end;
+
+    local procedure GivenAnEngine(JobIdFormat: Text[50])
+    var
+        Setup: Record "PEQI Imposition Setup";
+    begin
+        Queue.Reset();
+        Setup := Setup.GetSetup();
+        Setup.Get('');
+        Setup."Engine Base Url" := 'https://engine.example.com/api';
+        Setup."Job Id Format" := JobIdFormat;
+        Setup.Modify(true);
+    end;
+
+    local procedure SolvedEntry(CaseId: Integer) ImpositionJob: Record "PEQI Imposition Job"
+    begin
+        ImpositionJob := ImpositionJob.NewEntry(CaseId, 1, 1);
+        ImpositionJob.SetRequestJson('{"parts":[]}');
+        ImpositionJob."Solution Id" := 'sol-x';
+        ImpositionJob.Status := ImpositionJob.Status::Solved;
+        ImpositionJob.Modify(true);
+    end;
+
+    /// <summary>Generates the ticket against a canned engine and returns the body that was posted.</summary>
+    local procedure GenerateAndReadBody(var ImpositionJob: Record "PEQI Imposition Job"): Text
+    var
+        CommitManager: Codeunit "PEQI Commit Manager";
+    begin
+        Queue.QueueResponse(200,
+          '{"ticketId":"' + DelChr(Format(CreateGuid()), '=', '{}') + '","solutionId":"sol-x",' +
+          '"fileName":"x.jdf","jdf":"<JDF/>","sha256":"00","diagnostics":[]}');
+        CommitManager.SetTransport("PEQI Transport Type"::Test);
+        CommitManager.GenerateJdf(ImpositionJob);
+        exit(DelChr(Queue.CallBody(1), '=', ' '));
     end;
 }

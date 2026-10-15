@@ -57,6 +57,19 @@ codeunit 50602 "PEQI Test Data"
         exit((CaseId * 100) + JobItemNo);
     end;
 
+    /// <summary>Inserts the PVS Case the commit reads its order numbers from. Without PrintVis's
+    /// triggers, which would number it.</summary>
+    procedure AddCase(CaseId: Integer; OrderNo: Code[20]; CopyFromOrderNo: Code[20])
+    var
+        PVSCase: Record "PVS Case";
+    begin
+        PVSCase.Init();
+        PVSCase.ID := CaseId;
+        PVSCase."Order No." := OrderNo;
+        PVSCase."Copy From Order No." := CopyFromOrderNo;
+        PVSCase.Insert(false);
+    end;
+
     /// <summary>Inserts the PVS Job that BuildObject reads for binding and quantity.</summary>
     procedure AddJob(CaseId: Integer; JobNo: Integer; VersionNo: Integer; FinishingCode: Code[20]; Quantity: Integer)
     var

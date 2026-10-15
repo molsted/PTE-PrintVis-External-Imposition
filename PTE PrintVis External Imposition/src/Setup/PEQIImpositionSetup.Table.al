@@ -46,10 +46,16 @@ table 50500 "PEQI Imposition Setup"
             MaxValue = 50;
         }
         field(22; "Jdf Version"; Enum "PEQI Jdf Version") { Caption = 'JDF Version'; }
+        // %1 case ID, %2 job, %3 version, %4 the case's order number. Blank reads as %4.
         field(24; "Job Id Format"; Text[50])
         {
             Caption = 'Job ID Format';
-            InitValue = '%1-%2-%3';
+            InitValue = '%4';
+
+            trigger OnValidate()
+            begin
+                CheckJobIdFormat("Job Id Format");
+            end;
         }
         // In the installation's margin unit, as PrintVis's own trims are. Used when a job item states none.
         field(30; "Default Trim Head"; Decimal) { Caption = 'Default Trim Head'; DecimalPlaces = 0 : 5; }
@@ -64,6 +70,11 @@ table 50500 "PEQI Imposition Setup"
 
     var
         ApiKeyTok: Label 'PEQI_ENGINE_API_KEY', Locked = true;
+        // The placeholders a message names are passed as arguments, because StrSubstNo does not
+        // substitute into its arguments: a literal %1 in the text itself would be replaced.
+        UnknownPlaceholderErr: Label 'The Job ID Format "%1" has a placeholder other than %2 (case ID), %3 (job), %4 (version) and %5 (order number).', Comment = '%1 the format entered, %2..%5 the placeholder names';
+        NoJobPlaceholderErr: Label 'The Job ID Format "%1" would give every job the same ID. Use %2 (order number) or %3 (case ID).', Comment = '%1 the format entered, %2 and %3 the placeholder names';
+        JobWithoutCaseErr: Label 'The Job ID Format "%1" uses %2 or %3 without %4. A job and a version are only numbered within their case, so add %4 (case ID).', Comment = '%1 the format entered, %2..%4 the placeholder names';
 
     /// <summary>Reads the singleton, inserting it with its InitValues on first call.</summary>
     procedure GetSetup(): Record "PEQI Imposition Setup"
@@ -77,6 +88,50 @@ table 50500 "PEQI Imposition Setup"
                 Setup.Get('');
         end;
         exit(Setup);
+    end;
+
+    /// <summary>The Job ID Format in force: the field, or %4 when it is blank.</summary>
+    procedure EffectiveJobIdFormat(): Text
+    begin
+        if "Job Id Format" = '' then
+            exit('%4');
+        exit("Job Id Format");
+    end;
+
+    /// <summary>Refuses a format that would not name one job. %2 and %3 count jobs and versions
+    /// within a case, so neither identifies anything without %1; and a format with neither %1 nor
+    /// %4 gives every job the same ID.</summary>
+    procedure CheckJobIdFormat(JobIdFormat: Text)
+    var
+        Position: Integer;
+    begin
+        if JobIdFormat = '' then
+            exit;
+        // Nested rather than "or": AL evaluates both sides, and the second would read past the end.
+        for Position := 1 to StrLen(JobIdFormat) do
+            if JobIdFormat[Position] = '%' then begin
+                if Position = StrLen(JobIdFormat) then
+                    Error(UnknownPlaceholderErr, JobIdFormat, '%1', '%2', '%3', '%4');
+                if not (JobIdFormat[Position + 1] in ['1' .. '4']) then
+                    Error(UnknownPlaceholderErr, JobIdFormat, '%1', '%2', '%3', '%4');
+            end;
+        if not (UsesPlaceholder(JobIdFormat, 1) or UsesPlaceholder(JobIdFormat, 4)) then
+            Error(NoJobPlaceholderErr, JobIdFormat, '%4', '%1');
+        if (UsesPlaceholder(JobIdFormat, 2) or UsesPlaceholder(JobIdFormat, 3)) and not UsesPlaceholder(JobIdFormat, 1) then
+            Error(JobWithoutCaseErr, JobIdFormat, '%2', '%3', '%1');
+    end;
+
+    /// <summary>Whether a format uses %N.</summary>
+    procedure UsesPlaceholder(JobIdFormat: Text; Placeholder: Integer): Boolean
+    begin
+        exit(StrPos(JobIdFormat, '%' + Format(Placeholder)) > 0);
+    end;
+
+    /// <summary>A job ID from the format. Integers are written plainly: Format()'s default would
+    /// put a thousands separator into a case ID.</summary>
+    procedure FormatJobId(JobIdFormat: Text; CaseId: Integer; JobNo: Integer; VersionNo: Integer; OrderNo: Code[20]): Text
+    begin
+        exit(StrSubstNo(JobIdFormat, Format(CaseId, 0, 9), Format(JobNo, 0, 9), Format(VersionNo, 0, 9), OrderNo));
     end;
 
     /// <summary>Stores the engine API key. Never a table field - a field would be

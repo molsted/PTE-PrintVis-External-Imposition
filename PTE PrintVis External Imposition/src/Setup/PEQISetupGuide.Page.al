@@ -146,7 +146,7 @@ page 50522 "PEQI Setup Guide"
                 field("Grain Policy"; Rec."Grain Policy") { ToolTip = 'How strictly the engine holds a part''s grain rule.'; }
                 field("Max Solutions"; Rec."Max Solutions") { ToolTip = 'How many solutions the engine returns for the planner to choose from.'; }
                 field("Jdf Version"; Rec."Jdf Version") { ToolTip = 'The JDF version the ticket is written in.'; }
-                field("Job Id Format"; Rec."Job Id Format") { ToolTip = 'JDF JobID. %1 is the case ID, %2 the job, %3 the version.'; }
+                field("Job Id Format"; Rec."Job Id Format") { ToolTip = 'JDF JobID, and RelatedJobID for a case copied from another order. %1 is the case ID, %2 the job, %3 the version, %4 the order number. %2 and %3 need %1. Blank is %4.'; }
                 field("Default Trim Head"; Rec."Default Trim Head") { CaptionClass = Units.MarginCaptionClass('Default Trim Head'); ToolTip = 'Head trim for a part whose job item states none.'; }
                 field("Default Trim Foot"; Rec."Default Trim Foot") { CaptionClass = Units.MarginCaptionClass('Default Trim Foot'); ToolTip = 'Foot trim for a part whose job item states none.'; }
                 field("Default Trim Face"; Rec."Default Trim Face") { CaptionClass = Units.MarginCaptionClass('Default Trim Face'); ToolTip = 'Face trim for a part whose job item states none.'; }

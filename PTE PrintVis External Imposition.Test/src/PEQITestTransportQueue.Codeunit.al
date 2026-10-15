@@ -92,6 +92,11 @@ codeunit 50603 "PEQI Test Transport Queue"
         exit(CallMethods.Get(Index));
     end;
 
+    procedure CallBody(Index: Integer): Text
+    begin
+        exit(CallBodies.Get(Index));
+    end;
+
     procedure CallTimeout(Index: Integer): Integer
     begin
         exit(CallTimeouts.Get(Index));

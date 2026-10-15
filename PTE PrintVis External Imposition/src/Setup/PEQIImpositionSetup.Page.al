@@ -77,7 +77,7 @@ page 50510 "PEQI Imposition Setup"
                 field("Job Id Format"; Rec."Job Id Format")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'JDF JobID. %1 is the case ID, %2 the job, %3 the version.';
+                    ToolTip = 'JDF JobID, and RelatedJobID for a case copied from another order. %1 is the case ID, %2 the job, %3 the version, %4 the order number. %2 and %3 need %1. Blank is %4.';
                 }
             }
 
