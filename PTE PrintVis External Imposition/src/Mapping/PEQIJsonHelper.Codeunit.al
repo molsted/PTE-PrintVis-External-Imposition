@@ -120,4 +120,27 @@ codeunit 50539 "PEQI Json Helper"
         Result := Token.AsArray();
         exit(true);
     end;
+
+    /// <summary>Everything left in a text stream, line breaks included.</summary>
+    /// <remarks>InStream.ReadText stops at the end of a line, so a single call returns the first
+    /// line only - which for an indented JDF ticket is its XML declaration and nothing else. Lines
+    /// come back joined with a line feed, so a CR LF file reads back with LF: use the blob's own
+    /// stream, not this, where the bytes have to be the stored ones.</remarks>
+    procedure ReadAllText(var InStr: InStream): Text
+    var
+        Builder: TextBuilder;
+        Line: Text;
+        LineFeed: Char;
+        Separator: Text;
+    begin
+        LineFeed := 10;
+        Separator := Format(LineFeed);
+        while not InStr.EOS() do begin
+            InStr.ReadText(Line);
+            Builder.Append(Line);
+            if not InStr.EOS() then
+                Builder.Append(Separator);
+        end;
+        exit(Builder.ToText());
+    end;
 }

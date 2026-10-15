@@ -11,6 +11,7 @@
 namespace PrintersEquity.ExternalImposition.Document;
 
 using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Mapping;
 
 table 50507 "PEQI Jdf Ticket"
 {
@@ -52,14 +53,21 @@ table 50507 "PEQI Jdf Ticket"
 
     procedure GetJdf(): Text
     var
+        JsonHelper: Codeunit "PEQI Json Helper";
         InStr: InStream;
-        JdfText: Text;
     begin
         CalcFields(Jdf);
         if not Jdf.HasValue() then
             exit('');
         Jdf.CreateInStream(InStr, TextEncoding::UTF8);
-        InStr.ReadText(JdfText);
-        exit(JdfText);
+        exit(JsonHelper.ReadAllText(InStr));
+    end;
+
+    /// <summary>The stored ticket as a stream, byte for byte - what a download should hand over,
+    /// so the file matches the engine's SHA-256.</summary>
+    procedure JdfStream(var InStr: InStream)
+    begin
+        CalcFields(Jdf);
+        Jdf.CreateInStream(InStr);
     end;
 }

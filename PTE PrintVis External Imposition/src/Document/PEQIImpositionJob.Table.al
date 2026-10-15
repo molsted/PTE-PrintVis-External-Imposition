@@ -11,6 +11,7 @@
 namespace PrintersEquity.ExternalImposition.Document;
 
 using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Mapping;
 using System.Security.AccessControl;
 
 table 50505 "PEQI Imposition Job"
@@ -106,14 +107,13 @@ table 50505 "PEQI Imposition Job"
 
     procedure GetRequestJson(): Text
     var
+        JsonHelper: Codeunit "PEQI Json Helper";
         InStr: InStream;
-        RequestText: Text;
     begin
         CalcFields("Request Json");
         if not "Request Json".HasValue() then
             exit('');
         "Request Json".CreateInStream(InStr, TextEncoding::UTF8);
-        InStr.ReadText(RequestText);
-        exit(RequestText);
+        exit(JsonHelper.ReadAllText(InStr));
     end;
 }

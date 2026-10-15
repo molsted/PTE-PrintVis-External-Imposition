@@ -45,6 +45,60 @@ codeunit 50615 "PEQI Document Tests"
     end;
 
     [Test]
+    procedure AStoredTicketReadsBackWhole()
+    var
+        JdfTicket: Record "PEQI Jdf Ticket";
+        TicketId: Guid;
+        Written: Text;
+    begin
+        // [GIVEN] a ticket the way the engine writes it: indented, one element per line
+        Written := Lines('<?xml version="1.0" encoding="utf-8"?>', '<JDF ID="ID_Node_1">', '  <AuditPool />', '</JDF>');
+        TicketId := CreateGuid();
+        JdfTicket.Init();
+        JdfTicket."Ticket Id" := TicketId;
+        JdfTicket.SetJdf(Written);
+        JdfTicket.Insert(true);
+
+        // [WHEN] it is read back
+        JdfTicket.Get(TicketId);
+
+        // [THEN] every line comes back, not only the XML declaration
+        Assert.AreEqual(Written, JdfTicket.GetJdf(), 'A multi-line ticket reads back whole');
+    end;
+
+    [Test]
+    procedure AMultiLineRequestSurvivesARoundTrip()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        Written: Text;
+    begin
+        // [GIVEN] an entry, and a request with line breaks in it
+        ImpositionJob := ImpositionJob.NewEntry(4713, 1, 1);
+        Written := Lines('{', '  "parts": [ { "name": "Body", "pageCount": 32 } ]', '}', '');
+
+        // [WHEN] it is stored and read back
+        ImpositionJob.SetRequestJson(Written);
+        ImpositionJob.Modify(true);
+        ImpositionJob.Get(4713, 1, 1, ImpositionJob."Entry No.");
+
+        // [THEN] all of it comes back
+        Assert.AreEqual(Written, ImpositionJob.GetRequestJson(), 'A multi-line request reads back whole');
+    end;
+
+    /// <summary>Joins up to four lines with line feeds. A blank last line ends the text with one.</summary>
+    local procedure Lines(First: Text; Second: Text; Third: Text; Fourth: Text): Text
+    var
+        LineFeed: Char;
+        Separator: Text;
+    begin
+        LineFeed := 10;
+        Separator := Format(LineFeed);
+        if Fourth = '' then
+            exit(First + Separator + Second + Separator + Third + Separator);
+        exit(First + Separator + Second + Separator + Third + Separator + Fourth);
+    end;
+
+    [Test]
     procedure RequestJsonSurvivesARoundTrip()
     var
         ImpositionJob: Record "PEQI Imposition Job";

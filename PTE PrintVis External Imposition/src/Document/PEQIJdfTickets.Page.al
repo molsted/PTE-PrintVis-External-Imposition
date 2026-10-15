@@ -10,7 +10,6 @@
 
 namespace PrintersEquity.ExternalImposition.Document;
 
-using System.Utilities;
 
 page 50520 "PEQI Jdf Tickets"
 {
@@ -50,16 +49,15 @@ page 50520 "PEQI Jdf Tickets"
                 Image = Download;
                 ToolTip = 'Downloads the stored JDF ticket.';
 
+                // The stored bytes, streamed as they are. Rebuilding the file from text once handed
+                // over the first line only, and would in any case change the line endings the
+                // engine's SHA-256 was taken over.
                 trigger OnAction()
                 var
-                    TempBlob: Codeunit "Temp Blob";
-                    OutStr: OutStream;
                     InStr: InStream;
                     FileName: Text;
                 begin
-                    TempBlob.CreateOutStream(OutStr, TextEncoding::UTF8);
-                    OutStr.WriteText(Rec.GetJdf());
-                    TempBlob.CreateInStream(InStr, TextEncoding::UTF8);
+                    Rec.JdfStream(InStr);
                     FileName := Rec."File Name";
                     DownloadFromStream(InStr, '', '', '', FileName);
                 end;
