@@ -10,6 +10,7 @@ var PEQI = (function () {
     var frame = null;
     var spaOrigin = null;
     var pending = null;
+    var listening = false;
 
     function originOf(url) {
         var a = document.createElement('a');
@@ -53,46 +54,77 @@ var PEQI = (function () {
         }
     }
 
+    // Resolves the SPA origin, frames the SPA with embed=1 and queues the message
+    // that is posted once the SPA announces imposition:ready. Returns false (after
+    // reporting through EditorFailed) when the frame cannot be set up.
+    function frameSpa(spaUrl, title, message) {
+        if (!spaUrl) {
+            fail('No editor URL is configured on the Imposition Setup page.');
+            return false;
+        }
+
+        try {
+            spaOrigin = originOf(spaUrl);
+        } catch (e) {
+            fail('The editor URL is not a valid address: ' + spaUrl);
+            return false;
+        }
+
+        pending = message;
+
+        var container = document.getElementById('controlAddIn');
+        container.innerHTML = '';
+
+        frame = document.createElement('iframe');
+        frame.setAttribute('title', title);
+        frame.style.width = '100%';
+        frame.style.height = '100%';
+        frame.style.border = '0';
+        frame.src = spaUrl + (spaUrl.indexOf('?') === -1 ? '?' : '&') + 'embed=1';
+        frame.onerror = function () {
+            fail('The imposition editor could not be loaded from ' + spaOrigin + '.');
+        };
+
+        container.appendChild(frame);
+        if (!listening) {
+            window.addEventListener('message', onMessage, false);
+            listening = true;
+        }
+        return true;
+    }
+
     return {
         load: function (spaUrl, requestJson, optionsJson) {
-            if (!spaUrl) {
-                fail('No editor URL is configured on the Imposition Setup page.');
-                return;
-            }
-
-            try {
-                spaOrigin = originOf(spaUrl);
-            } catch (e) {
-                fail('The editor URL is not a valid address: ' + spaUrl);
-                return;
-            }
-
-            pending = {
+            frameSpa(spaUrl, 'Imposition editor', {
                 type: 'imposition:seed',
                 v: 1,
                 request: JSON.parse(requestJson),
                 options: JSON.parse(optionsJson)
-            };
+            });
+        },
 
-            var container = document.getElementById('controlAddIn');
-            container.innerHTML = '';
+        loadBook: function (spaUrl, jdfXml, optionsJson) {
+            var options;
+            try {
+                options = optionsJson ? JSON.parse(optionsJson) : undefined;
+            } catch (e) {
+                fail('The book preview options are not valid JSON.');
+                return;
+            }
 
-            frame = document.createElement('iframe');
-            frame.setAttribute('title', 'Imposition editor');
-            frame.style.width = '100%';
-            frame.style.height = '100%';
-            frame.style.border = '0';
-            frame.src = spaUrl + (spaUrl.indexOf('?') === -1 ? '?' : '&') + 'embed=1';
-            frame.onerror = function () {
-                fail('The imposition editor could not be loaded from ' + spaOrigin + '.');
-            };
-
-            container.appendChild(frame);
-            window.addEventListener('message', onMessage, false);
+            var message = { type: 'book:seed', v: 1, jdf: jdfXml };
+            if (options) {
+                message.options = options;
+            }
+            frameSpa(spaUrl, 'Book preview', message);
         }
     };
 })();
 
 function LoadEditor(spaUrl, requestJson, optionsJson) {
     PEQI.load(spaUrl, requestJson, optionsJson);
+}
+
+function LoadBook(spaUrl, jdfXml, optionsJson) {
+    PEQI.loadBook(spaUrl, jdfXml, optionsJson);
 }

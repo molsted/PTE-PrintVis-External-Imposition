@@ -25,6 +25,9 @@ controladdin "PEQI Imposition Studio"
     /// <summary>Frames the editor and seeds it with the request.</summary>
     procedure LoadEditor(SpaUrl: Text; RequestJson: Text; OptionsJson: Text);
 
+    /// <summary>Frames the editor as a flip-book of an approved JDF ticket and seeds it with the ticket.</summary>
+    procedure LoadBook(SpaUrl: Text; JdfXml: Text; OptionsJson: Text);
+
     event ControlReady();
     event SolutionChosen(ResultJson: Text);
     event PreviewReady(PreviewJson: Text);

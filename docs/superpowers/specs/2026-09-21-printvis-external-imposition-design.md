@@ -283,6 +283,7 @@ Host → SPA:
 | Message | Payload |
 |---|---|
 | `imposition:seed` | `{ v: 1, request: <CalculateRequest>, options: { readonlyProduct: true, startRoute: "layout" } }` |
+| `book:seed` | `{ v: 1, jdf: <JDF ticket XML>, options?: { entryKey?, units?, theme? } }`. Frames the flip-book preview of an approved ticket instead of the editor; an unreadable ticket answers `imposition:error` |
 
 SPA → host:
 
