@@ -61,6 +61,27 @@ table 50500 "PEQI Imposition Setup"
         field(30; "Default Trim Head"; Decimal) { Caption = 'Default Trim Head'; DecimalPlaces = 0 : 5; }
         field(31; "Default Trim Foot"; Decimal) { Caption = 'Default Trim Foot'; DecimalPlaces = 0 : 5; }
         field(32; "Default Trim Face"; Decimal) { Caption = 'Default Trim Face'; DecimalPlaces = 0 : 5; }
+        // What a new customer link starts with. The planner can change each per link when making one.
+        field(40; "Link Show Imposition"; Boolean) { Caption = 'Show Imposition'; }
+        field(41; "Link Show Book"; Boolean)
+        {
+            Caption = 'Show Book';
+            InitValue = true;
+        }
+        field(42; "Link Allow File Submission"; Boolean)
+        {
+            Caption = 'Allow File Submission';
+            InitValue = true;
+        }
+        // A DateFormula has no InitValue, so GetSetup and the upgrade set <14D>.
+        field(43; "Link Validity"; DateFormula) { Caption = 'Link Validity'; }
+        field(44; "Link Max Sessions"; Integer)
+        {
+            Caption = 'Max Sessions';
+            InitValue = 10;
+            MinValue = 1;
+            MaxValue = 1000;
+        }
     }
 
     keys
@@ -70,6 +91,7 @@ table 50500 "PEQI Imposition Setup"
 
     var
         ApiKeyTok: Label 'PEQI_ENGINE_API_KEY', Locked = true;
+        DefaultLinkValidityTok: Label '<14D>', Locked = true;
         // The placeholders a message names are passed as arguments, because StrSubstNo does not
         // substitute into its arguments: a literal %1 in the text itself would be replaced.
         UnknownPlaceholderErr: Label 'The Job ID Format "%1" has a placeholder other than %2 (case ID), %3 (job), %4 (version) and %5 (order number).', Comment = '%1 the format entered, %2..%5 the placeholder names';
@@ -84,10 +106,27 @@ table 50500 "PEQI Imposition Setup"
         if not Setup.Get('') then begin
             Setup.Init();
             Setup."Primary Key" := '';
+            Evaluate(Setup."Link Validity", DefaultLinkValidityTok);
             if not Setup.Insert(true) then
                 Setup.Get('');
         end;
         exit(Setup);
+    end;
+
+    /// <summary>Gives a setup that predates the customer-link fields their defaults. A new field
+    /// reads as the type's zero on an existing row, not as its InitValue. A Max Sessions of zero
+    /// cannot be entered (MinValue is 1), so it marks a row nobody has set yet, and a user's own
+    /// choices are never overwritten.</summary>
+    procedure ApplyLinkDefaults()
+    begin
+        if "Link Max Sessions" = 0 then begin
+            "Link Show Imposition" := false;
+            "Link Show Book" := true;
+            "Link Allow File Submission" := true;
+            "Link Max Sessions" := 10;
+        end;
+        if Format("Link Validity") = '' then
+            Evaluate("Link Validity", DefaultLinkValidityTok);
     end;
 
     /// <summary>The Job ID Format in force: the field, or %4 when it is blank.</summary>

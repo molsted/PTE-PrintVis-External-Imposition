@@ -11,6 +11,7 @@
 namespace PrintersEquity.ExternalImposition.Core;
 
 using PrintersEquity.ExternalImposition.Document;
+using PrintersEquity.ExternalImposition.Links;
 using PrintersEquity.ExternalImposition.Setup;
 
 permissionset 50580 "PEQI Imposition"
@@ -20,6 +21,7 @@ permissionset 50580 "PEQI Imposition"
     Permissions =
         page "PEQI Book Preview" = X,
         codeunit "PEQI Book Preview Mgt." = X,
+        tabledata "PEQI Customer Link" = RIMD,
         tabledata "PEQI Imposition Setup" = R,
         tabledata "PEQI Imposition Job" = RIMD,
         tabledata "PEQI Press Run" = RIMD,

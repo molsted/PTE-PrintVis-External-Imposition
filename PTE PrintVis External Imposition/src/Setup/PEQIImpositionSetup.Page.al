@@ -80,6 +80,15 @@ page 50510 "PEQI Imposition Setup"
                     ToolTip = 'JDF JobID, and RelatedJobID for a case copied from another order. %1 is the case ID, %2 the job, %3 the version, %4 the order number. %2 and %3 need %1. Blank is %4.';
                 }
             }
+            group(CustomerLinks)
+            {
+                Caption = 'Customer Links';
+                field("Link Show Imposition"; Rec."Link Show Imposition") { ApplicationArea = All; ToolTip = 'Whether a new customer link shows the customer the imposition. The planner can change it per link.'; }
+                field("Link Show Book"; Rec."Link Show Book") { ApplicationArea = All; ToolTip = 'Whether a new customer link shows the customer the book. The planner can change it per link.'; }
+                field("Link Allow File Submission"; Rec."Link Allow File Submission") { ApplicationArea = All; ToolTip = 'Whether a new customer link lets the customer send in files. The planner can change it per link.'; }
+                field("Link Validity"; Rec."Link Validity") { ApplicationArea = All; ToolTip = 'How long a new customer link works, for example 14D. The engine accepts at most 366 days.'; }
+                field("Link Max Sessions"; Rec."Link Max Sessions") { ApplicationArea = All; ToolTip = 'How many browsers can open a new customer link, from 1 to 1000.'; }
+            }
 
             group(Connection)
             {

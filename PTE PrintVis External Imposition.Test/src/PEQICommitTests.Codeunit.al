@@ -13,6 +13,7 @@ namespace PrintersEquity.ExternalImposition.Tests;
 using PrintersEquity.ExternalImposition.Commit;
 using PrintersEquity.ExternalImposition.Document;
 using PrintersEquity.ExternalImposition.Integration;
+using PrintersEquity.ExternalImposition.Links;
 using PrintersEquity.ExternalImposition.Setup;
 using System.TestLibraries.Utilities;
 
@@ -368,6 +369,29 @@ codeunit 50613 "PEQI Commit Tests"
 
         // [THEN] no project id is sent
         Assert.AreEqual(0, StrPos(Body, 'projectId'), 'A case in no project sends no project id');
+    end;
+
+    [Test]
+    procedure TheTicketCarriesItsSubjectAndRevision()
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        LinkSubject: Codeunit "PEQI Link Subject";
+        Body: Text;
+    begin
+        // [GIVEN] a solved job that has been re-solved once, so its entry number is not 1
+        GivenAnEngine('%4');
+        TestData.AddCase(9040, 'O-9040', '');
+        ImpositionJob := ImpositionJob.NewEntry(9040, 1, 1);
+        ImpositionJob := SolvedEntry(9040);
+
+        // [WHEN] the ticket is generated
+        Body := GenerateAndReadBody(ImpositionJob);
+
+        // [THEN] the body names the subject a customer link is made for, and the revision that
+        // lets the engine tell a newer ticket from an older one
+        Assert.IsTrue(StrPos(Body, '"subject":"' + LinkSubject."For"(9040, 1, 1) + '"') > 0, 'The subject is company, case, job and version');
+        Assert.AreEqual(2, ImpositionJob."Entry No.", 'The re-solve is entry 2');
+        Assert.IsTrue(StrPos(Body, '"subjectRevision":2') > 0, 'The revision is the entry number');
     end;
 
     local procedure GivenAnEngine(JobIdFormat: Text[50])

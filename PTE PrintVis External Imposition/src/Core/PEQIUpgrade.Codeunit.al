@@ -20,8 +20,12 @@ codeunit 50549 "PEQI Upgrade"
     var
         Setup: Record "PEQI Imposition Setup";
     begin
-        // Nothing to migrate yet. The singleton is ensured so an upgrade from a
-        // version that predates it lands on a complete configuration.
-        Setup.GetSetup();
+        // The singleton is ensured so an upgrade from a version that predates it lands on a
+        // complete configuration, and a setup that predates the customer-link fields gets their
+        // defaults.
+        Setup := Setup.GetSetup();
+        Setup.Get('');
+        Setup.ApplyLinkDefaults();
+        Setup.Modify(true);
     end;
 }

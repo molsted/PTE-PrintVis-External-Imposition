@@ -12,6 +12,7 @@ namespace PrintersEquity.ExternalImposition.Commit;
 
 using PrintersEquity.ExternalImposition.Document;
 using PrintersEquity.ExternalImposition.Integration;
+using PrintersEquity.ExternalImposition.Links;
 using PrintersEquity.ExternalImposition.Mapping;
 using PrintersEquity.ExternalImposition.Setup;
 
@@ -23,6 +24,7 @@ codeunit 50543 "PEQI Commit Manager"
         JsonHelper: Codeunit "PEQI Json Helper";
         EnumNames: Codeunit "PEQI Enum Names";
         CustomerMapper: Codeunit "PEQI Customer Mapper";
+        LinkSubject: Codeunit "PEQI Link Subject";
         TransportType: Enum "PEQI Transport Type";
         NotSolvedErr: Label 'This imposition has no chosen solution yet.';
         NoRequestErr: Label 'This imposition has no stored request.';
@@ -117,6 +119,10 @@ codeunit 50543 "PEQI Commit Manager"
         JobIdText := JobId(ImpositionJob, Setup, PVSCase);
         JsonHelper.AddText(RequestObject, 'jobId', JobIdText);
         JsonHelper.AddText(RequestObject, 'relatedJobId', RelatedJobId(ImpositionJob, Setup, PVSCase));
+        // What a customer link is made for, and which solve this ticket came from: the entry number
+        // only grows, so the engine can tell a newer ticket from an older one for the same subject.
+        JsonHelper.AddText(RequestObject, 'subject', LinkSubject."For"(ImpositionJob."Case ID", ImpositionJob.Job, ImpositionJob.Version));
+        JsonHelper.AddInteger(RequestObject, 'subjectRevision', ImpositionJob."Entry No.");
         // The project case this case belongs to. Zero is "none", and sends nothing.
         if PVSCase."Belongs To Project ID" <> 0 then
             JsonHelper.AddText(RequestObject, 'projectId', Format(PVSCase."Belongs To Project ID", 0, 9));
