@@ -29,6 +29,12 @@ codeunit 50553 "PEQI Customer Link Mgt."
         BookPreviewMgt: Codeunit "PEQI Book Preview Mgt.";
         NoApprovedErr: Label 'This job has no approved imposition yet.';
         BadAnswerErr: Label 'The Impositioning engine answered, but not with a customer link.';
+        RevokedTxt: Label 'Revoked';
+        ExpiredTxt: Label 'Expired';
+        UsedUpTxt: Label 'Used up';
+        ActiveTxt: Label 'Active';
+        InSyncTxt: Label 'In sync';
+        OutOfSyncTxt: Label 'Out of sync';
 
     procedure SetTransport(NewTransportType: Enum "PEQI Transport Type")
     begin
@@ -177,6 +183,31 @@ codeunit 50553 "PEQI Customer Link Mgt."
     procedure ClearSubmission(CaseId: Integer; JobNo: Integer; VersionNo: Integer)
     begin
         Client.ClearSubmission(LinkSubject."For"(CaseId, JobNo, VersionNo));
+    end;
+
+    /// <summary>What state a link is in, for a list. It is worked out rather than stored, so
+    /// it never goes stale: Revoked, else Expired once the expiry has passed, else Used up when
+    /// every session is taken, else Active.</summary>
+    procedure StateOf(CustomerLink: Record "PEQI Customer Link"): Text
+    begin
+        if CustomerLink.Revoked then
+            exit(RevokedTxt);
+        if (CustomerLink."Expires At" <> 0DT) and (CustomerLink."Expires At" <= CurrentDateTime()) then
+            exit(ExpiredTxt);
+        if CustomerLink."Sessions Used" >= CustomerLink."Max Sessions" then
+            exit(UsedUpTxt);
+        exit(ActiveTxt);
+    end;
+
+    /// <summary>Whether the engine's current ticket is the approved one, as of the last refresh.
+    /// Blank before the first refresh, when nothing is known.</summary>
+    procedure SyncOf(CustomerLink: Record "PEQI Customer Link"): Text
+    begin
+        if CustomerLink."Last Refreshed" = 0DT then
+            exit('');
+        if CustomerLink."In Sync" then
+            exit(InSyncTxt);
+        exit(OutOfSyncTxt);
     end;
 
     /// <summary>The body of the engine's create route. The wire carries four feature flags, and

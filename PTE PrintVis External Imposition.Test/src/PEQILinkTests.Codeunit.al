@@ -25,6 +25,9 @@ codeunit 50626 "PEQI Link Tests"
     var
         Assert: Codeunit "Library Assert";
         Queue: Codeunit "PEQI Test Transport Queue";
+        // What the modal page handlers should do, since a handler cannot be given arguments.
+        HandlerMaxSessions: Integer;
+        HandlerCloseAction: Action;
 
     [Test]
     procedure TheSubjectNamesCompanyCaseJobAndVersion()
@@ -571,6 +574,259 @@ codeunit 50626 "PEQI Link Tests"
         Assert.IsFalse(Settings."Allow File Submission", 'File submission');
         Assert.AreEqual(2, Settings."Max Sessions", 'Sessions');
         Assert.AreEqual(CalcDate('<30D>', Today()), DT2Date(Settings."Expires At"), 'Thirty days out');
+    end;
+
+    [Test]
+    [HandlerFunctions('AssertDefaultsThenCancel')]
+    procedure TheDialogStartsFromTheSetupDefaults()
+    var
+        Setup: Record "PEQI Imposition Setup";
+        Settings: Record "PEQI Customer Link Settings" temporary;
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+        Dialog: Page "PEQI Customer Link Settings";
+        Validity: DateFormula;
+    begin
+        // [GIVEN] a setup that shows the imposition and the book, for 30 days, to two sessions
+        ArrangeEngine();
+        Setup.Get('');
+        Setup."Link Show Imposition" := true;
+        Setup."Link Show Book" := true;
+        Setup."Link Allow File Submission" := false;
+        Evaluate(Validity, '<30D>');
+        Setup."Link Validity" := Validity;
+        Setup."Link Max Sessions" := 2;
+        Setup.Modify();
+        LinkMgt.DefaultSettings(Settings);
+
+        // [WHEN] the planner opens the dialog and cancels it (the handler asserts what it showed)
+        Dialog.SetSettings(Settings);
+
+        // [THEN] cancelling gives no OK, so no link would be made
+        Assert.AreEqual(Action::Cancel, Dialog.RunModal(), 'Cancel is not OK');
+    end;
+
+    [Test]
+    [HandlerFunctions('ChangeSessionsThenClose')]
+    procedure TheDialogHandsBackWhatWasEdited()
+    var
+        Settings: Record "PEQI Customer Link Settings" temporary;
+        Edited: Record "PEQI Customer Link Settings" temporary;
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+        Dialog: Page "PEQI Customer Link Settings";
+    begin
+        // [GIVEN] the defaults, and a planner who changes the sessions to seven and presses OK
+        ArrangeEngine();
+        LinkMgt.DefaultSettings(Settings);
+        HandlerMaxSessions := 7;
+        HandlerCloseAction := Action::OK;
+        Dialog.SetSettings(Settings);
+
+        // [WHEN] the dialog is run
+        Assert.AreEqual(Action::OK, Dialog.RunModal(), 'OK');
+        Dialog.GetSettings(Edited);
+
+        // [THEN] the edit comes back, and what was not touched is as it was
+        Assert.AreEqual(7, Edited."Max Sessions", 'The sessions the planner typed');
+        Assert.IsTrue(Edited."Show Book", 'The book is still on');
+        Assert.AreEqual(Settings."Expires At", Edited."Expires At", 'The expiry is unchanged');
+    end;
+
+    [Test]
+    [HandlerFunctions('ChangeSessionsThenClose')]
+    procedure TheDialogRefusesOkWithoutAFeature()
+    var
+        Settings: Record "PEQI Customer Link Settings" temporary;
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+        Dialog: Page "PEQI Customer Link Settings";
+    begin
+        // [GIVEN] settings with no feature on, and a planner who presses OK
+        ArrangeEngine();
+        LinkMgt.DefaultSettings(Settings);
+        Settings."Show Imposition" := false;
+        Settings."Show Book" := false;
+        Settings."Allow File Submission" := false;
+        Settings.Modify();
+        HandlerMaxSessions := 5;
+        HandlerCloseAction := Action::OK;
+        Dialog.SetSettings(Settings);
+
+        // [WHEN] the dialog is run
+        asserterror Dialog.RunModal();
+
+        // [THEN] it says why instead of closing
+        Assert.ExpectedError('Choose at least one of');
+    end;
+
+    [Test]
+    procedure SettingsWithinTheEngineLimitsPass()
+    var
+        Settings: Record "PEQI Customer Link Settings" temporary;
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+    begin
+        ArrangeEngine();
+        LinkMgt.DefaultSettings(Settings);
+        Settings.Check();
+        Settings."Max Sessions" := 1;
+        Settings.Check();
+        Settings."Max Sessions" := 1000;
+        Settings.Check();
+    end;
+
+    [Test]
+    procedure AnExpiryThatHasPassedIsRefused()
+    var
+        Settings: Record "PEQI Customer Link Settings" temporary;
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+    begin
+        ArrangeEngine();
+        LinkMgt.DefaultSettings(Settings);
+        Settings."Expires At" := CreateDateTime(CalcDate('<-1D>', Today()), Time());
+        asserterror Settings.Check();
+        Assert.ExpectedError('The link must expire later than now.');
+
+        Settings."Expires At" := 0DT;
+        asserterror Settings.Check();
+        Assert.ExpectedError('The link must expire later than now.');
+    end;
+
+    [Test]
+    procedure AnExpiryMoreThanAYearAwayIsRefused()
+    var
+        Settings: Record "PEQI Customer Link Settings" temporary;
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+    begin
+        ArrangeEngine();
+        LinkMgt.DefaultSettings(Settings);
+        Settings."Expires At" := CreateDateTime(CalcDate('<+400D>', Today()), Time());
+        asserterror Settings.Check();
+        Assert.ExpectedError('at most 366 days');
+    end;
+
+    [Test]
+    procedure MaxSessionsOutsideOneToAThousandIsRefused()
+    var
+        Settings: Record "PEQI Customer Link Settings" temporary;
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+    begin
+        ArrangeEngine();
+        LinkMgt.DefaultSettings(Settings);
+        Settings."Max Sessions" := 0;
+        asserterror Settings.Check();
+        Assert.ExpectedError('between 1 and 1000');
+
+        Settings."Max Sessions" := 1001;
+        asserterror Settings.Check();
+        Assert.ExpectedError('between 1 and 1000');
+    end;
+
+    [Test]
+    procedure AtLeastOneFeatureMustBeOn()
+    var
+        Settings: Record "PEQI Customer Link Settings" temporary;
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+    begin
+        ArrangeEngine();
+        LinkMgt.DefaultSettings(Settings);
+        Settings."Show Imposition" := false;
+        Settings."Show Book" := false;
+        Settings."Allow File Submission" := true;
+        Settings.Check();
+
+        Settings."Allow File Submission" := false;
+        asserterror Settings.Check();
+        Assert.ExpectedError('Choose at least one of');
+    end;
+
+    [Test]
+    procedure TheStateReadsRevokedExpiredUsedUpOrActive()
+    var
+        CustomerLink: Record "PEQI Customer Link";
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+    begin
+        // [GIVEN] a live link
+        CustomerLink."Expires At" := CreateDateTime(CalcDate('<+5D>', Today()), Time());
+        CustomerLink."Max Sessions" := 3;
+        CustomerLink."Sessions Used" := 2;
+
+        // [THEN] it is Active
+        Assert.AreEqual('Active', LinkMgt.StateOf(CustomerLink), 'Live');
+
+        // [THEN] every session taken makes it Used up
+        CustomerLink."Sessions Used" := 3;
+        Assert.AreEqual('Used up', LinkMgt.StateOf(CustomerLink), 'No session left');
+
+        // [THEN] a passed expiry makes it Expired, whatever the sessions
+        CustomerLink."Expires At" := CreateDateTime(CalcDate('<-1D>', Today()), Time());
+        Assert.AreEqual('Expired', LinkMgt.StateOf(CustomerLink), 'Past its expiry');
+
+        // [THEN] a revoked link is Revoked before anything else
+        CustomerLink.Revoked := true;
+        Assert.AreEqual('Revoked', LinkMgt.StateOf(CustomerLink), 'Revoked wins');
+    end;
+
+    [Test]
+    procedure OutOfSyncIsOnlyReportedOnceRefreshed()
+    var
+        CustomerLink: Record "PEQI Customer Link";
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+    begin
+        // [GIVEN] a link nobody has refreshed
+        // [THEN] nothing is claimed about its sync
+        Assert.AreEqual('', LinkMgt.SyncOf(CustomerLink), 'Never refreshed');
+
+        // [GIVEN] one refreshed and in sync, and one refreshed and not
+        CustomerLink."Last Refreshed" := CurrentDateTime();
+        CustomerLink."In Sync" := true;
+        Assert.AreEqual('In sync', LinkMgt.SyncOf(CustomerLink), 'In sync');
+        CustomerLink."In Sync" := false;
+        Assert.AreEqual('Out of sync', LinkMgt.SyncOf(CustomerLink), 'Out of sync');
+    end;
+
+    [Test]
+    [HandlerFunctions('AssertUrlThenClose')]
+    procedure TheCreatedPageShowsTheUrlToCopy()
+    var
+        CustomerLink: Record "PEQI Customer Link";
+        Created: Page "PEQI Customer Link Created";
+    begin
+        // [GIVEN] a stored link
+        CustomerLink."Link Id" := CreateGuid();
+        CustomerLink."Expires At" := CreateDateTime(CalcDate('<+14D>', Today()), 120000T);
+        CustomerLink."Max Sessions" := 10;
+
+        // [WHEN] the page is shown for its URL (the handler asserts what it shows)
+        Created.SetLink('https://engine.example.com/l/COPY-ME', CustomerLink);
+        Created.RunModal();
+    end;
+
+    [ModalPageHandler]
+    procedure AssertDefaultsThenCancel(var Dialog: TestPage "PEQI Customer Link Settings")
+    begin
+        Assert.IsTrue(Dialog."Show Imposition".AsBoolean(), 'Imposition from setup');
+        Assert.IsTrue(Dialog."Show Book".AsBoolean(), 'Book from setup');
+        Assert.IsFalse(Dialog."Allow File Submission".AsBoolean(), 'File submission from setup');
+        Assert.AreEqual(2, Dialog."Max Sessions".AsInteger(), 'Sessions from setup');
+        Assert.AreEqual(CalcDate('<30D>', Today()), DT2Date(Dialog."Expires At".AsDateTime()), 'Thirty days out');
+        Dialog.Cancel().Invoke();
+    end;
+
+    [ModalPageHandler]
+    procedure ChangeSessionsThenClose(var Dialog: TestPage "PEQI Customer Link Settings")
+    begin
+        Dialog."Max Sessions".SetValue(HandlerMaxSessions);
+        if HandlerCloseAction = Action::OK then
+            Dialog.OK().Invoke()
+        else
+            Dialog.Cancel().Invoke();
+    end;
+
+    [ModalPageHandler]
+    procedure AssertUrlThenClose(var Created: TestPage "PEQI Customer Link Created")
+    begin
+        Assert.AreEqual('https://engine.example.com/l/COPY-ME', Created.LinkUrl.Value(), 'The URL to copy');
+        Assert.IsFalse(Created.LinkUrl.Editable(), 'It is selected and copied, not edited');
+        Assert.AreEqual('10', Created.MaxSessions.Value(), 'The sessions');
+        Created.CloseDialog.Invoke();
     end;
 
     local procedure ArrangeEngine()

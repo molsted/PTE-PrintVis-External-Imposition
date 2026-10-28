@@ -20,6 +20,9 @@ permissionset 50580 "PEQI Imposition"
     Assignable = true;
     Permissions =
         page "PEQI Book Preview" = X,
+        page "PEQI Customer Link Created" = X,
+        page "PEQI Customer Link Settings" = X,
+        page "PEQI Customer Links" = X,
         codeunit "PEQI Book Preview Mgt." = X,
         codeunit "PEQI Customer Link Mgt." = X,
         codeunit "PEQI Link Subject" = X,

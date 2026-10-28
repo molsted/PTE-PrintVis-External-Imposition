@@ -33,4 +33,25 @@ table 50512 "PEQI Customer Link Settings"
     {
         key(PK; "Primary Key") { Clustered = true; }
     }
+
+    var
+        PastExpiryErr: Label 'The link must expire later than now.';
+        FarExpiryErr: Label 'A link can be valid for at most 366 days.';
+        SessionsErr: Label 'Max Sessions must be between 1 and 1000.';
+        NoFeatureErr: Label 'Choose at least one of Show Imposition, Show Book and Allow File Submission.';
+
+    /// <summary>Refuses what the engine would refuse, so the planner gets a clear message in
+    /// the dialog instead of a failed call afterwards. The limits are the engine's: an expiry
+    /// after now and within 366 days, one to a thousand sessions, and a feature to show.</summary>
+    procedure Check()
+    begin
+        if "Expires At" <= CurrentDateTime() then
+            Error(PastExpiryErr);
+        if "Expires At" > CreateDateTime(CalcDate('<+366D>', Today()), Time()) then
+            Error(FarExpiryErr);
+        if ("Max Sessions" < 1) or ("Max Sessions" > 1000) then
+            Error(SessionsErr);
+        if not ("Show Imposition" or "Show Book" or "Allow File Submission") then
+            Error(NoFeatureErr);
+    end;
 }

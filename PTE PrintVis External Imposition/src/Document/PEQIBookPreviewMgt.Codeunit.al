@@ -75,13 +75,14 @@ codeunit 50552 "PEQI Book Preview Mgt."
 
     /// <summary>
     /// The options the book preview is seeded with: the entry key (echoed back so the result can
-    /// be matched to its entry), the planner's display units, and the BC theme.
+    /// be matched to its entry), the job's subject, the planner's display units, and the BC theme.
     /// </summary>
     /// <remarks>
     /// Mirrors "PEQI Request Builder".SeedOptions for entryKey and units but, unlike it, carries
-    /// none of the editor's own options -- a book preview is read-only.
+    /// none of the editor's own options -- a book preview is read-only. The subject is what lets
+    /// the book fetch the previews a customer has made for this job.
     /// </remarks>
-    procedure BookOptions(EntryKey: Text): Text
+    procedure BookOptions(EntryKey: Text; Subject: Text): Text
     var
         Units: Codeunit "PEQI Unit Converter";
         Options: JsonObject;
@@ -89,6 +90,7 @@ codeunit 50552 "PEQI Book Preview Mgt."
         DisplayUnits: Text;
     begin
         Options.Add('entryKey', EntryKey);
+        Options.Add('subject', Subject);
         DisplayUnits := Units.FormatDisplayUnits();
         if DisplayUnits <> '' then
             Options.Add('units', DisplayUnits);

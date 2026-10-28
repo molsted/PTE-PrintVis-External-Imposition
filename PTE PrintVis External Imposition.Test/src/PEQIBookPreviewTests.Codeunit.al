@@ -12,6 +12,7 @@ namespace PrintersEquity.ExternalImposition.Tests;
 
 using PrintersEquity.ExternalImposition.Document;
 using PrintersEquity.ExternalImposition.Enums;
+using PrintersEquity.ExternalImposition.Links;
 using System.TestLibraries.Utilities;
 
 codeunit 50625 "PEQI Book Preview Tests"
@@ -128,7 +129,7 @@ codeunit 50625 "PEQI Book Preview Tests"
     begin
         // [GIVEN] an entry key
         // [WHEN] the book options are built
-        Options.ReadFrom(BookPreviewMgt.BookOptions('9106-1-1-1'));
+        Options.ReadFrom(BookPreviewMgt.BookOptions('9106-1-1-1', 'company:9106:1:1'));
 
         // [THEN] the key and the BC theme are in them, and nothing of the editor's own options
         Options.Get('entryKey', Token);
@@ -136,6 +137,23 @@ codeunit 50625 "PEQI Book Preview Tests"
         Options.Get('theme', Token);
         Assert.AreEqual('bc', Token.AsValue().AsText(), 'The theme is bc');
         Assert.IsFalse(Options.Contains('mode'), 'The book seed has no mode');
+    end;
+
+    [Test]
+    procedure TheBookOptionsCarryTheSubject()
+    var
+        BookPreviewMgt: Codeunit "PEQI Book Preview Mgt.";
+        LinkSubject: Codeunit "PEQI Link Subject";
+        Options: JsonObject;
+        Token: JsonToken;
+    begin
+        // [GIVEN] the subject of a job
+        // [WHEN] the book options are built for it
+        Options.ReadFrom(BookPreviewMgt.BookOptions('9107-1-1-1', LinkSubject."For"(9107, 1, 1)));
+
+        // [THEN] the subject is in them, so the book can show what the customer has previewed
+        Assert.IsTrue(Options.Get('subject', Token), 'The options name the subject');
+        Assert.AreEqual(LinkSubject."For"(9107, 1, 1), Token.AsValue().AsText(), 'The job''s subject');
     end;
 
     local procedure SetStatus(var ImpositionJob: Record "PEQI Imposition Job"; NewStatus: Enum "PEQI Job Status")

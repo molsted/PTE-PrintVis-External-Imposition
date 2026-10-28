@@ -10,6 +10,7 @@
 
 namespace PrintersEquity.ExternalImposition.Document;
 
+using PrintersEquity.ExternalImposition.Links;
 using PrintersEquity.ExternalImposition.Setup;
 using PrintersEquity.ExternalImposition.Studio;
 
@@ -57,6 +58,7 @@ page 50527 "PEQI Book Preview"
                         Setup: Record "PEQI Imposition Setup";
                         ImpositionJob: Record "PEQI Imposition Job";
                         BookPreviewMgt: Codeunit "PEQI Book Preview Mgt.";
+                        LinkSubject: Codeunit "PEQI Link Subject";
                         NoUrlErr: Label 'No editor URL is configured on the Imposition Setup page.';
                         NoJobErr: Label 'The imposition this ticket belongs to no longer exists.';
                     begin
@@ -71,7 +73,7 @@ page 50527 "PEQI Book Preview"
                             ShowProblem(NoJobErr);
                             exit;
                         end;
-                        CurrPage.Book.LoadBook(Setup."Spa Url", Ticket.GetJdf(), BookPreviewMgt.BookOptions(ImpositionJob.EntryKey()));
+                        CurrPage.Book.LoadBook(Setup."Spa Url", Ticket.GetJdf(), BookPreviewMgt.BookOptions(ImpositionJob.EntryKey(), LinkSubject."For"(Ticket."Case ID", Ticket.Job, Ticket.Version)));
                     end;
 
                     trigger SolutionChosen(ResultJson: Text)

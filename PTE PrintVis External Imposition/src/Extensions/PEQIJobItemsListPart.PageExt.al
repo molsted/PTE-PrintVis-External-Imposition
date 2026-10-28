@@ -11,6 +11,7 @@
 namespace PrintersEquity.ExternalImposition.Extensions;
 
 using PrintersEquity.ExternalImposition.Document;
+using PrintersEquity.ExternalImposition.Links;
 
 pageextension 50532 "PEQI Job Items ListPart" extends "PVS Job Items ListPart"
 {
@@ -40,6 +41,72 @@ pageextension 50532 "PEQI Job Items ListPart" extends "PVS Job Items ListPart"
                     BookPage.Run();
                 end;
             }
+            action(PEQIGenerateCustomerLink)
+            {
+                ApplicationArea = All;
+                Caption = 'Generate Customer Link';
+                Image = Link;
+                ToolTip = 'Makes a link the customer can open to see the approved imposition, with the defaults from Imposition Setup.';
+                Enabled = HasApproved;
+                Visible = CanPreview;
+
+                trigger OnAction()
+                var
+                    CustomerLink: Record "PEQI Customer Link";
+                    LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+                    Url: Text;
+                begin
+                    Url := LinkMgt.CreateLinkWithDefaults(Rec.ID, Rec.Job, Rec.Version, CustomerLink);
+                    ShowLink(Url, CustomerLink);
+                end;
+            }
+            action(PEQIGenerateCustomerLinkWithSettings)
+            {
+                ApplicationArea = All;
+                Caption = 'Generate Customer Link with Settings...';
+                Image = LinkWeb;
+                ToolTip = 'Makes a customer link after letting you choose its features, expiry and number of sessions.';
+                Enabled = HasApproved;
+                Visible = CanPreview;
+
+                trigger OnAction()
+                var
+                    CustomerLink: Record "PEQI Customer Link";
+                    Settings: Record "PEQI Customer Link Settings" temporary;
+                    LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+                    Dialog: Page "PEQI Customer Link Settings";
+                    Url: Text;
+                begin
+                    LinkMgt.DefaultSettings(Settings);
+                    // DefaultSettings may have created the setup row, and RunModal refuses to start
+                    // inside a write transaction.
+                    Commit();
+                    Dialog.SetSettings(Settings);
+                    if Dialog.RunModal() <> Action::OK then
+                        exit;
+                    Dialog.GetSettings(Settings);
+                    Url := LinkMgt.CreateLink(Rec.ID, Rec.Job, Rec.Version, Settings, CustomerLink);
+                    ShowLink(Url, CustomerLink);
+                end;
+            }
+            action(PEQICustomerLinks)
+            {
+                ApplicationArea = All;
+                Caption = 'Customer Links';
+                Image = Links;
+                ToolTip = 'Shows the customer links made for this job, and what the customers have done with them.';
+                Visible = CanPreview;
+
+                trigger OnAction()
+                var
+                    CustomerLink: Record "PEQI Customer Link";
+                begin
+                    CustomerLink.SetRange("Case ID", Rec.ID);
+                    CustomerLink.SetRange(Job, Rec.Job);
+                    CustomerLink.SetRange(Version, Rec.Version);
+                    Page.Run(Page::"PEQI Customer Links", CustomerLink);
+                end;
+            }
         }
     }
 
@@ -48,6 +115,16 @@ pageextension 50532 "PEQI Job Items ListPart" extends "PVS Job Items ListPart"
         HasApproved: Boolean;
         // Users without the imposition permissions never see the action.
         CanPreview: Boolean;
+
+    local procedure ShowLink(Url: Text; CustomerLink: Record "PEQI Customer Link")
+    var
+        Created: Page "PEQI Customer Link Created";
+    begin
+        // The link is stored by now, and RunModal refuses to start inside a write transaction.
+        Commit();
+        Created.SetLink(Url, CustomerLink);
+        Created.RunModal();
+    end;
 
     trigger OnOpenPage()
     var
