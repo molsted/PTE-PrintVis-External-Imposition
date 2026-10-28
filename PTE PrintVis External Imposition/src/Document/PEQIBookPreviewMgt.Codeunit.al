@@ -56,7 +56,21 @@ codeunit 50552 "PEQI Book Preview Mgt."
     var
         JdfTicket: Record "PEQI Jdf Ticket";
     begin
+        // Shown on every Job Card: a user without the imposition permissions simply has no book.
+        if not CanReadTickets() then
+            exit(false);
         exit(FindApprovedTicket(CaseId, JobNo, VersionNo, JdfTicket));
+    end;
+
+    /// <summary>
+    /// Whether the current user may read the imposition jobs and JDF tickets a book preview is built from.
+    /// </summary>
+    procedure CanReadTickets(): Boolean
+    var
+        ImpositionJob: Record "PEQI Imposition Job";
+        JdfTicket: Record "PEQI Jdf Ticket";
+    begin
+        exit(ImpositionJob.ReadPermission() and JdfTicket.ReadPermission());
     end;
 
     /// <summary>

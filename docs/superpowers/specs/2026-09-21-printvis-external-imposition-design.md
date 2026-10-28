@@ -446,6 +446,7 @@ The WebApp changes are specified separately in `ImpositioningApp`:
 - emitting `imposition:preview` per sheet
 - parent-origin allowlist and `frame-ancestors`
 - hiding tenant and plant settings, which are meaningless with an inline catalogue
+- answering `book:seed` with the read-only flip-book preview of an approved ticket (see §8.1)
 
 The §8.1 message contract is the interface between the two specs and the only
 thing both sides must agree on.

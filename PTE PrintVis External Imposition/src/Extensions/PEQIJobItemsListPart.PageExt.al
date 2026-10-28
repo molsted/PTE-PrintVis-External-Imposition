@@ -25,6 +25,7 @@ pageextension 50532 "PEQI Job Items ListPart" extends "PVS Job Items ListPart"
                 Image = View;
                 ToolTip = 'Shows the approved imposition of this job as a flip-book.';
                 Enabled = HasApproved;
+                Visible = CanPreview;
 
                 trigger OnAction()
                 var
@@ -45,6 +46,15 @@ pageextension 50532 "PEQI Job Items ListPart" extends "PVS Job Items ListPart"
     var
         // Computed once per row rather than in Enabled, which is evaluated on every redraw.
         HasApproved: Boolean;
+        // Users without the imposition permissions never see the action.
+        CanPreview: Boolean;
+
+    trigger OnOpenPage()
+    var
+        BookPreviewMgt: Codeunit "PEQI Book Preview Mgt.";
+    begin
+        CanPreview := BookPreviewMgt.CanReadTickets();
+    end;
 
     trigger OnAfterGetCurrRecord()
     var

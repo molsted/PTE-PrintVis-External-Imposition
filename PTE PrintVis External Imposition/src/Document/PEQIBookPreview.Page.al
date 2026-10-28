@@ -58,6 +58,7 @@ page 50527 "PEQI Book Preview"
                         ImpositionJob: Record "PEQI Imposition Job";
                         BookPreviewMgt: Codeunit "PEQI Book Preview Mgt.";
                         NoUrlErr: Label 'No editor URL is configured on the Imposition Setup page.';
+                        NoJobErr: Label 'The imposition this ticket belongs to no longer exists.';
                     begin
                         Setup := Setup.GetSetup();
                         if Setup."Spa Url" = '' then begin
@@ -66,7 +67,10 @@ page 50527 "PEQI Book Preview"
                         end;
                         // The options are keyed by the job entry the ticket was written from, so the
                         // editor can tell this book from any other it has been shown.
-                        ImpositionJob.Get(Ticket."Case ID", Ticket.Job, Ticket.Version, Ticket."Entry No.");
+                        if not ImpositionJob.Get(Ticket."Case ID", Ticket.Job, Ticket.Version, Ticket."Entry No.") then begin
+                            ShowProblem(NoJobErr);
+                            exit;
+                        end;
                         CurrPage.Book.LoadBook(Setup."Spa Url", Ticket.GetJdf(), BookPreviewMgt.BookOptions(ImpositionJob.EntryKey()));
                     end;
 
