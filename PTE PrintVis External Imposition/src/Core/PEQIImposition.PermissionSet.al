@@ -21,6 +21,8 @@ permissionset 50580 "PEQI Imposition"
     Permissions =
         page "PEQI Book Preview" = X,
         codeunit "PEQI Book Preview Mgt." = X,
+        codeunit "PEQI Customer Link Mgt." = X,
+        codeunit "PEQI Link Subject" = X,
         tabledata "PEQI Customer Link" = RIMD,
         tabledata "PEQI Imposition Setup" = R,
         tabledata "PEQI Imposition Job" = RIMD,

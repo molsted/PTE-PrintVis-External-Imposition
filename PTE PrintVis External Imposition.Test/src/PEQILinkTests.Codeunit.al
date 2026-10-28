@@ -452,6 +452,41 @@ codeunit 50626 "PEQI Link Tests"
     end;
 
     [Test]
+    procedure ARevokeThroughAStaleCopyKeepsTheRefreshedCounts()
+    var
+        CustomerLink: Record "PEQI Customer Link";
+        Stale: Record "PEQI Customer Link";
+        Stored: Record "PEQI Customer Link";
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+        LinkId: Guid;
+    begin
+        // [GIVEN] a link, a copy of it taken before a refresh, and a refresh that finds two sessions and an assignment
+        ArrangeEngine();
+        LinkId := CreateGuid();
+        Queue.QueueResponse(201, CreatedResponse(LinkId, 'https://engine.example.com/l/R3', ApprovedTicket(9315, 1, 1)));
+        LinkMgt.SetTransport("PEQI Transport Type"::Test);
+        LinkMgt.CreateLinkWithDefaults(9315, 1, 1, CustomerLink);
+        Stale := CustomerLink;
+        Queue.Reset();
+        Queue.QueueResponse(200,
+          '{"currentTicketId":"' + Lower(CreateGuid()) + '","inSync":true,"links":[' +
+          '{"linkId":"' + Lower(LinkId) + '","state":"Active","sessionsUsed":2,"submission":{"pageCount":32,"assigned":20,"needsRedo":false,"previewPositions":[]}}]}');
+        LinkMgt.Refresh(CustomerLink);
+        Queue.QueueResponse(204, '');
+
+        // [WHEN] the link is revoked through the stale copy
+        LinkMgt.Revoke(Stale);
+
+        // [THEN] the refreshed counts are still there, the link is revoked, and the caller's copy is now current
+        Stored.Get(LinkId);
+        Assert.IsTrue(Stored.Revoked, 'Revoked');
+        Assert.AreEqual(2, Stored."Sessions Used", 'The refreshed sessions survive');
+        Assert.AreEqual(20, Stored."Assigned Pages", 'The refreshed assignment survives');
+        Assert.AreEqual(2, Stale."Sessions Used", 'The caller''s record holds the fresh row');
+        Assert.IsTrue(Stale.Revoked, 'and is revoked');
+    end;
+
+    [Test]
     procedure ResyncAttachesTheApprovedTicket()
     var
         ImpositionJob: Record "PEQI Imposition Job";

@@ -148,11 +148,18 @@ codeunit 50553 "PEQI Customer Link Mgt."
 
     /// <summary>Switches the link off at the engine. BC marks it revoked only once the engine
     /// has said so, so the list never shows a link as off that still opens.</summary>
+    /// <remarks>The row is read again before it is marked: the caller's copy may be older than a
+    /// refresh, and modifying it would write its old counts back over the new ones. The caller's
+    /// record is left holding the fresh row.</remarks>
     procedure Revoke(var CustomerLink: Record "PEQI Customer Link")
+    var
+        Stored: Record "PEQI Customer Link";
     begin
         Client.RevokeLink(CustomerLink."Link Id");
-        CustomerLink.Revoked := true;
-        CustomerLink.Modify();
+        Stored.Get(CustomerLink."Link Id");
+        Stored.Revoked := true;
+        Stored.Modify();
+        CustomerLink := Stored;
     end;
 
     /// <summary>Tells the engine that the approved ticket is the job's current one, for when a
