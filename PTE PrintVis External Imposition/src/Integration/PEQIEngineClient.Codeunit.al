@@ -12,6 +12,7 @@ namespace PrintersEquity.ExternalImposition.Integration;
 
 using PrintersEquity.ExternalImposition.Mapping;
 using PrintersEquity.ExternalImposition.Setup;
+using System.Utilities;
 
 codeunit 50541 "PEQI Engine Client"
 {
@@ -27,6 +28,7 @@ codeunit 50541 "PEQI Engine Client"
         NotFoundErr: Label 'The engine answered 404 Not Found at %1. Check the engine base URL -- it normally ends in /api.', Comment = '%1 url';
         NotEngineErr: Label 'The address %1 answered, but not as the Impositioning engine. Check the engine base URL -- it normally ends in /api.', Comment = '%1 url';
         SingleAttempt: Boolean;
+        AcceptConflict: Boolean;
 
     procedure SetTransport(NewTransportType: Enum "PEQI Transport Type")
     begin
@@ -45,7 +47,73 @@ codeunit 50541 "PEQI Engine Client"
 
     procedure GetTicket(TicketId: Guid): Text
     begin
-        exit(Call('GET', 'imposition/jdf/' + LowerCase(DelChr(Format(TicketId), '=', '{}')), ''));
+        exit(Call('GET', 'imposition/jdf/' + GuidText(TicketId), ''));
+    end;
+
+    /// <summary>Makes a customer link. Raises on any answer but 201, a 409 included.</summary>
+    procedure CreateLink(Body: Text): Text
+    begin
+        exit(Call('POST', 'imposition/links', Body));
+    end;
+
+    /// <summary>Makes a customer link, but reports the engine's 409 -- the subject has no current
+    /// ticket -- as false instead of raising it, with the engine's words in LastProblemDetail.
+    /// Only the backfill path wants this: it answers a 409 by attaching the approved ticket and
+    /// asking again. Every other failure still raises.</summary>
+    procedure TryCreateLink(Body: Text; var Response: Text): Boolean
+    begin
+        Clear(Response);
+        AcceptConflict := true;
+        Response := Call('POST', 'imposition/links', Body);
+        exit(LastStatus <> 409);
+    end;
+
+    /// <summary>The links made for a subject. The expected ticket, when there is one, is what
+    /// the engine measures inSync against.</summary>
+    procedure ListLinks(Subject: Text; ExpectedTicketId: Guid): Text
+    var
+        Route: Text;
+    begin
+        Route := 'imposition/links?subject=' + EncodeSegment(Subject);
+        if not IsNullGuid(ExpectedTicketId) then
+            Route += '&expectedTicketId=' + GuidText(ExpectedTicketId);
+        exit(Call('GET', Route, ''));
+    end;
+
+    procedure RevokeLink(LinkId: Guid)
+    begin
+        Call('POST', 'imposition/links/' + GuidText(LinkId) + '/revoke', '');
+    end;
+
+    /// <summary>Makes a ticket the subject's current one, whatever the engine thought before.
+    /// The revision is the ticket's entry number, so a later solve still outranks it.</summary>
+    procedure AttachTicket(Subject: Text; TicketId: Guid; Revision: Integer)
+    var
+        Body: JsonObject;
+        BodyText: Text;
+    begin
+        JsonHelper.AddInteger(Body, 'subjectRevision', Revision);
+        Body.WriteTo(BodyText);
+        Call('POST', 'imposition/subjects/' + EncodeSegment(Subject) + '/tickets/' + GuidText(TicketId), BodyText);
+    end;
+
+    procedure ClearSubmission(Subject: Text)
+    begin
+        Call('DELETE', 'imposition/subjects/' + EncodeSegment(Subject) + '/submission', '');
+    end;
+
+    /// <summary>A subject holds colons, and travels as one path or query segment. Escaped here so
+    /// that no caller has to remember to.</summary>
+    local procedure EncodeSegment(Value: Text): Text
+    var
+        Uri: Codeunit Uri;
+    begin
+        exit(Uri.EscapeDataString(Value));
+    end;
+
+    local procedure GuidText(Id: Guid): Text
+    begin
+        exit(LowerCase(DelChr(Format(Id), '=', '{}')));
     end;
 
     /// <summary>Whether the engine answers at the configured URL. False, with the reason in
@@ -126,7 +194,12 @@ codeunit 50541 "PEQI Engine Client"
         StatusCode: Integer;
         ResponseBody: Text;
         Reached: Boolean;
+        ConflictIsAnswer: Boolean;
     begin
+        // Read and cleared at once, so a call that raises cannot leave the next one tolerant.
+        ConflictIsAnswer := AcceptConflict;
+        AcceptConflict := false;
+
         Setup := Setup.GetSetup();
         Setup.Get('');
         if Setup."Engine Base Url" = '' then
@@ -149,6 +222,12 @@ codeunit 50541 "PEQI Engine Client"
             if Reached and (StatusCode >= 200) and (StatusCode < 300) then begin
                 LastDetail := '';
                 exit(ResponseBody);
+            end;
+
+            // Asked for by TryCreateLink alone: a 409 there is an answer, not a failure.
+            if Reached and ConflictIsAnswer and (StatusCode = 409) then begin
+                LastDetail := DescribeProblem(ResponseBody);
+                exit('');
             end;
 
             // 429 and 5xx are the moment being wrong; everything else is the
