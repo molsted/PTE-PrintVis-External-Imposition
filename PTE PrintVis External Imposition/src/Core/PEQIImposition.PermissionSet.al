@@ -18,6 +18,8 @@ permissionset 50580 "PEQI Imposition"
     Caption = 'Imposition';
     Assignable = true;
     Permissions =
+        page "PEQI Book Preview" = X,
+        codeunit "PEQI Book Preview Mgt." = X,
         tabledata "PEQI Imposition Setup" = R,
         tabledata "PEQI Imposition Job" = RIMD,
         tabledata "PEQI Press Run" = RIMD,
