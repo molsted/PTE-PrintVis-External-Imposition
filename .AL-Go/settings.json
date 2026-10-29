@@ -1,11 +1,17 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/AL-Go-Actions/v9.2/.Modules/settings.schema.json",
   "country": "dk",
-  "appFolders": [ "PTE PrintVis External Imposition" ],
-  "testFolders": [ "PTE PrintVis External Imposition.Test" ],
+  "appFolders": [
+    "PTE PrintVis External Imposition"
+  ],
+  "testFolders": [
+    "PTE PrintVis External Imposition.Test"
+  ],
   "bcptTestFolders": [],
-
   "useCompilerFolder": true,
   "doNotPublishApps": true,
-  "doNotRunTests": true
+  "doNotRunTests": true,
+  "installApps": [
+    "symbols/PrintVis_CIM_28.1.2.8.app"
+  ]
 }

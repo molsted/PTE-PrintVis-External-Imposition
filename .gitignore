@@ -23,3 +23,6 @@ cache_*
 # Claude Code worktrees and scratch
 .claude/worktrees/
 .superpowers/
+
+# Symbols CI cannot download: PrintVis CIM is not on the AppSource symbols feed
+!symbols/*.app
