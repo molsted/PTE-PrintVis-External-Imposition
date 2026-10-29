@@ -12,12 +12,17 @@ namespace PrintersEquity.ExternalImposition.Studio;
 
 controladdin "PEQI Imposition Studio"
 {
+    // The requested size is a floor unless the add-in may also shrink: without HorizontalShrink a
+    // window narrower than 1400 px cut the right of the frame off, and with it the centred book.
+    // Down to the minimum the editor and the book both lay themselves out to the frame they get.
     RequestedHeight = 900;
     MinimumHeight = 400;
     RequestedWidth = 1400;
     MinimumWidth = 600;
     VerticalStretch = true;
+    VerticalShrink = true;
     HorizontalStretch = true;
+    HorizontalShrink = true;
 
     StartupScript = 'src/Studio/Resources/PEQIStartup.js';
     Scripts = 'src/Studio/Resources/PEQIStudio.js';
