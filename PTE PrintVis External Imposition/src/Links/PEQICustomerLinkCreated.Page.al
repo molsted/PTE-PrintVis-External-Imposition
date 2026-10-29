@@ -24,6 +24,21 @@ page 50511 "PEQI Customer Link Created"
     {
         area(Content)
         {
+            group(OutOfSync)
+            {
+                ShowCaption = false;
+                Visible = IsOutOfSync;
+                field(OutOfSyncWarning; OutOfSyncWarning)
+                {
+                    ApplicationArea = All;
+                    Caption = 'Warning';
+                    Editable = false;
+                    MultiLine = true;
+                    Style = Unfavorable;
+                    StyleExpr = true;
+                    ToolTip = 'The engine is not showing the approved imposition.';
+                }
+            }
             group(Link)
             {
                 ShowCaption = false;
@@ -81,15 +96,24 @@ page 50511 "PEQI Customer Link Created"
         ExpiresAt: DateTime;
         MaxSessions: Integer;
         HasDetails: Boolean;
+        IsOutOfSync: Boolean;
+        OutOfSyncWarning: Text;
+        OutOfSyncTxt: Label 'The engine is not showing the approved imposition, so this link will show an imposition that is not the approved one. Re-sync the job, then create a new link.';
 
     /// <summary>The URL to show, and the stored link it belongs to when there is one.</summary>
     procedure SetLink(Url: Text; CustomerLink: Record "PEQI Customer Link")
     begin
         LinkUrl := Url;
         HasDetails := not IsNullGuid(CustomerLink."Link Id");
+        IsOutOfSync := false;
+        OutOfSyncWarning := '';
         if HasDetails then begin
             ExpiresAt := CustomerLink."Expires At";
             MaxSessions := CustomerLink."Max Sessions";
+            // Only once the engine has been asked: a row never refreshed knows nothing about it.
+            IsOutOfSync := (CustomerLink."Last Refreshed" <> 0DT) and not CustomerLink."In Sync";
+            if IsOutOfSync then
+                OutOfSyncWarning := OutOfSyncTxt;
         end;
     end;
 }

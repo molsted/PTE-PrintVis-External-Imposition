@@ -74,7 +74,15 @@ table 50500 "PEQI Imposition Setup"
             InitValue = true;
         }
         // A DateFormula has no InitValue, so GetSetup and the upgrade set <14D>.
-        field(43; "Link Validity"; DateFormula) { Caption = 'Link Validity'; }
+        field(43; "Link Validity"; DateFormula)
+        {
+            Caption = 'Link Validity';
+
+            trigger OnValidate()
+            begin
+                CheckLinkValidity("Link Validity");
+            end;
+        }
         field(44; "Link Max Sessions"; Integer)
         {
             Caption = 'Max Sessions';
@@ -92,6 +100,8 @@ table 50500 "PEQI Imposition Setup"
     var
         ApiKeyTok: Label 'PEQI_ENGINE_API_KEY', Locked = true;
         DefaultLinkValidityTok: Label '<14D>', Locked = true;
+        EmptyValidityErr: Label 'Link Validity must be filled in, for example 14D.';
+        ValidityRangeErr: Label 'Link Validity %1 puts a new link''s expiry %2 days from today. It must be from 1 to 366 days, which is all the engine accepts.', Comment = '%1 the formula entered, %2 the number of days it gives';
         // The placeholders a message names are passed as arguments, because StrSubstNo does not
         // substitute into its arguments: a literal %1 in the text itself would be replaced.
         UnknownPlaceholderErr: Label 'The Job ID Format "%1" has a placeholder other than %2 (case ID), %3 (job), %4 (version) and %5 (order number).', Comment = '%1 the format entered, %2..%5 the placeholder names';
@@ -127,6 +137,20 @@ table 50500 "PEQI Imposition Setup"
         end;
         if Format("Link Validity") = '' then
             Evaluate("Link Validity", DefaultLinkValidityTok);
+    end;
+
+    /// <summary>Refuses a validity the engine would refuse when a link is made: today plus the
+    /// formula must fall from one to 366 days ahead. It is measured from today, as a link's expiry
+    /// is, so a formula such as end of month is judged by what it gives now.</summary>
+    procedure CheckLinkValidity(Validity: DateFormula)
+    var
+        Days: Integer;
+    begin
+        if Format(Validity) = '' then
+            Error(EmptyValidityErr);
+        Days := CalcDate(Validity, Today()) - Today();
+        if (Days < 1) or (Days > 366) then
+            Error(ValidityRangeErr, Format(Validity), Days);
     end;
 
     /// <summary>The Job ID Format in force: the field, or %4 when it is blank.</summary>

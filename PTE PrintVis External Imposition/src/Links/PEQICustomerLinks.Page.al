@@ -104,6 +104,9 @@ page 50529 "PEQI Customer Links"
                     CustomerLink: Record "PEQI Customer Link";
                     LinkMgt: Codeunit "PEQI Customer Link Mgt.";
                 begin
+                    // It cannot be undone, and the customer may be part way through.
+                    if not Confirm(RevokeQst, false) then
+                        exit;
                     CustomerLink := Rec;
                     LinkMgt.Revoke(CustomerLink);
                     CurrPage.Update(false);
@@ -170,6 +173,7 @@ page 50529 "PEQI Customer Links"
         SyncStyle: Text;
         HasLink: Boolean;
         ClearQst: Label 'Clear everything the customer has assigned and previewed for this job? They will have to start over.';
+        RevokeQst: Label 'Revoke this link? Anyone who opens it afterwards is told it is no longer valid, and this cannot be undone.';
         OfTxt: Label '%1 of %2', Comment = '%1 a count, %2 the most it can be';
 
     trigger OnOpenPage()

@@ -28,6 +28,9 @@ codeunit 50626 "PEQI Link Tests"
         // What the modal page handlers should do, since a handler cannot be given arguments.
         HandlerMaxSessions: Integer;
         HandlerCloseAction: Action;
+        // What the confirm handler answers, and the question it was asked.
+        HandlerConfirmReply: Boolean;
+        HandlerQuestion: Text;
 
     [Test]
     procedure TheSubjectNamesCompanyCaseJobAndVersion()
@@ -799,6 +802,148 @@ codeunit 50626 "PEQI Link Tests"
         Created.RunModal();
     end;
 
+    [Test]
+    procedure LinkValidityFromOneTo366DaysPasses()
+    var
+        Setup: Record "PEQI Imposition Setup";
+        Validity: DateFormula;
+    begin
+        Evaluate(Validity, '<1D>');
+        Setup.Validate("Link Validity", Validity);
+        Evaluate(Validity, '<14D>');
+        Setup.Validate("Link Validity", Validity);
+        Evaluate(Validity, '<366D>');
+        Setup.Validate("Link Validity", Validity);
+    end;
+
+    [Test]
+    procedure LinkValidityBeyondTheEngineLimitIsRefused()
+    var
+        Setup: Record "PEQI Imposition Setup";
+        Validity: DateFormula;
+    begin
+        // [WHEN] a validity of two years, or 367 days, is entered
+        Evaluate(Validity, '<2Y>');
+        asserterror Setup.Validate("Link Validity", Validity);
+
+        // [THEN] it is refused at once, naming the engine's limit, not at click time
+        Assert.ExpectedError('from 1 to 366 days');
+
+        Evaluate(Validity, '<367D>');
+        asserterror Setup.Validate("Link Validity", Validity);
+        Assert.ExpectedError('from 1 to 366 days');
+    end;
+
+    [Test]
+    procedure LinkValidityOfZeroOrLessIsRefused()
+    var
+        Setup: Record "PEQI Imposition Setup";
+        Validity: DateFormula;
+    begin
+        Evaluate(Validity, '<0D>');
+        asserterror Setup.Validate("Link Validity", Validity);
+        Assert.ExpectedError('from 1 to 366 days');
+
+        Evaluate(Validity, '<-3D>');
+        asserterror Setup.Validate("Link Validity", Validity);
+        Assert.ExpectedError('from 1 to 366 days');
+
+        Clear(Validity);
+        asserterror Setup.Validate("Link Validity", Validity);
+        Assert.ExpectedError('must be filled in');
+    end;
+
+    [Test]
+    procedure DefaultsThatSetupHoldsOutOfRangeAreRefusedBeforeTheEngineIsCalled()
+    var
+        Setup: Record "PEQI Imposition Setup";
+        CustomerLink: Record "PEQI Customer Link";
+        LinkMgt: Codeunit "PEQI Customer Link Mgt.";
+        Validity: DateFormula;
+    begin
+        // [GIVEN] an approved job, and a setup saved with two years of validity (written without validation, as an older version could)
+        ArrangeEngine();
+        ApprovedTicket(9320, 1, 1);
+        Setup.Get('');
+        Evaluate(Validity, '<2Y>');
+        Setup."Link Validity" := Validity;
+        Setup.Modify();
+
+        // [WHEN] a link is made with the defaults
+        LinkMgt.SetTransport("PEQI Transport Type"::Test);
+        asserterror LinkMgt.CreateLinkWithDefaults(9320, 1, 1, CustomerLink);
+
+        // [THEN] the planner is told why, and the engine's raw 400 is never provoked
+        Assert.ExpectedError('at most 366 days');
+        Assert.AreEqual(0, Queue.CallCount(), 'No call was made');
+        Assert.AreEqual(0, CountLinks(9320), 'No link was stored');
+    end;
+
+    [Test]
+    [HandlerFunctions('ConfirmHandler')]
+    procedure DecliningTheRevokeConfirmationLeavesTheLinkLive()
+    var
+        CustomerLink: Record "PEQI Customer Link";
+        Stored: Record "PEQI Customer Link";
+        Links: TestPage "PEQI Customer Links";
+        LinkId: Guid;
+    begin
+        // [GIVEN] a stored link, and a planner who answers No when asked
+        ArrangeEngine();
+        LinkId := CreateGuid();
+        CustomerLink."Link Id" := LinkId;
+        CustomerLink."Case ID" := 9321;
+        CustomerLink.Job := 1;
+        CustomerLink.Version := 1;
+        CustomerLink.Insert();
+        HandlerConfirmReply := false;
+
+        // [WHEN] Revoke is chosen on the link
+        Links.OpenView();
+        Links.GoToRecord(CustomerLink);
+        Links.Revoke.Invoke();
+
+        // [THEN] the planner was asked, in the words Clear Submission uses for an irreversible step, and nothing was sent or marked
+        Assert.IsTrue(HandlerQuestion.StartsWith('Revoke this link?'), 'The question names what is about to happen');
+        Assert.IsTrue(HandlerQuestion.Contains('cannot be undone'), 'and that it cannot be undone');
+        Stored.Get(LinkId);
+        Assert.IsFalse(Stored.Revoked, 'Not revoked');
+    end;
+
+    [Test]
+    [HandlerFunctions('AssertOutOfSyncWarningThenClose')]
+    procedure ALinkMadeOutOfSyncShowsAWarning()
+    var
+        CustomerLink: Record "PEQI Customer Link";
+        Created: Page "PEQI Customer Link Created";
+    begin
+        // [GIVEN] a link the engine said was not in sync when it was made
+        CustomerLink."Link Id" := CreateGuid();
+        CustomerLink."Max Sessions" := 10;
+        CustomerLink."In Sync" := false;
+        CustomerLink."Last Refreshed" := CurrentDateTime();
+
+        // [WHEN] the page is shown (the handler asserts the warning)
+        Created.SetLink('https://engine.example.com/l/OFF', CustomerLink);
+        Created.RunModal();
+    end;
+
+    [Test]
+    [HandlerFunctions('AssertNoWarningThenClose')]
+    procedure ALinkInSyncShowsNoWarning()
+    var
+        CustomerLink: Record "PEQI Customer Link";
+        Created: Page "PEQI Customer Link Created";
+    begin
+        CustomerLink."Link Id" := CreateGuid();
+        CustomerLink."Max Sessions" := 10;
+        CustomerLink."In Sync" := true;
+        CustomerLink."Last Refreshed" := CurrentDateTime();
+
+        Created.SetLink('https://engine.example.com/l/ON', CustomerLink);
+        Created.RunModal();
+    end;
+
     [ModalPageHandler]
     procedure AssertDefaultsThenCancel(var Dialog: TestPage "PEQI Customer Link Settings")
     begin
@@ -827,6 +972,29 @@ codeunit 50626 "PEQI Link Tests"
         Assert.IsFalse(Created.LinkUrl.Editable(), 'It is selected and copied, not edited');
         Assert.AreEqual('10', Created.MaxSessions.Value(), 'The sessions');
         Created.CloseDialog.Invoke();
+    end;
+
+    [ModalPageHandler]
+    procedure AssertOutOfSyncWarningThenClose(var Created: TestPage "PEQI Customer Link Created")
+    begin
+        Assert.IsTrue(Created.OutOfSyncWarning.Visible(), 'The warning is shown');
+        Assert.IsTrue(Created.OutOfSyncWarning.Value().Contains('not the approved one'), 'It says the link shows another imposition');
+        Assert.IsTrue(Created.OutOfSyncWarning.Value().Contains('Re-sync'), 'and what to do');
+        Created.CloseDialog.Invoke();
+    end;
+
+    [ModalPageHandler]
+    procedure AssertNoWarningThenClose(var Created: TestPage "PEQI Customer Link Created")
+    begin
+        Assert.IsFalse(Created.OutOfSyncWarning.Visible(), 'No warning for a link in sync');
+        Created.CloseDialog.Invoke();
+    end;
+
+    [ConfirmHandler]
+    procedure ConfirmHandler(Question: Text[1024]; var Reply: Boolean)
+    begin
+        HandlerQuestion := Question;
+        Reply := HandlerConfirmReply;
     end;
 
     local procedure ArrangeEngine()

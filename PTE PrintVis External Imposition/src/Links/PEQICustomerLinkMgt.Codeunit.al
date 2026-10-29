@@ -62,12 +62,15 @@ codeunit 50553 "PEQI Customer Link Mgt."
         Settings.Insert();
     end;
 
-    /// <summary>Makes a link with the defaults from setup. Returns its URL.</summary>
+    /// <summary>Makes a link with the defaults from setup. Returns its URL. The defaults are
+    /// checked as the dialog checks what the planner enters, because setup may hold a validity
+    /// that was saved before it was checked, or that has drifted out of range.</summary>
     procedure CreateLinkWithDefaults(CaseId: Integer; JobNo: Integer; VersionNo: Integer; var CustomerLink: Record "PEQI Customer Link"): Text
     var
         Settings: Record "PEQI Customer Link Settings" temporary;
     begin
         DefaultSettings(Settings);
+        Settings.Check();
         exit(CreateLink(CaseId, JobNo, VersionNo, Settings, CustomerLink));
     end;
 
